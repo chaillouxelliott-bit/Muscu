@@ -1,0 +1,1681 @@
+<!doctype html><html lang="fr"><head><meta charset=utf8><meta name="theme-color" content="#0d0d10"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Carnet muscu"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Carnet de séances</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: app de salle mobile-first — en-tête, contenu par onglet, barre de navigation fixe en bas */
+:root {
+  /* thème unique sombre : noir profond, rouge vif lumineux */
+  --bg: #0d0d10;
+  --surface: #1a1a1f;
+  --sunk: #26262d;
+  --fg: #f8f8fa;
+  --muted: #a9a9b3;
+  --line: #34343c;
+  --accent: #ff3b47;
+  --accent-2: #ff7a3d;
+  --accent-soft: rgba(255, 59, 71, .16);
+  --accent-fg: #ffffff;
+  --up: #3fe08e;
+  --up-bg: rgba(63, 224, 142, .15);
+  --warn: #ffb020;
+  --glow: 0 6px 22px rgba(255, 59, 71, .35);
+  --p25: #ff3b47; --p20: #3d7bff; --p15: #ffc531; --p10: #2fbf68; --p5: #e9e9ee; --psm: #8a8a94;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px calc(96px + env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h1 { font-size: 30px; line-height: 1; text-transform: uppercase; }
+h1 em { font-style: normal; color: var(--accent); text-shadow: 0 0 18px rgba(255,59,71,.45); }
+h2 { font-size: 22px; text-transform: uppercase; }
+h3 { font-size: 18px; text-transform: uppercase; }
+p { margin: 0; }
+.sub { color: var(--muted); font-size: 14px; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; box-shadow: 0 0 0 6px var(--bg); display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); gap: 5px; background: var(--sunk); padding: 5px; border-radius: 12px; }
+.tab { border: 0; background: transparent; color: var(--muted); padding: 9px 2px 7px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.tab b { font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+.tab span { font-size: 11px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: var(--glow); }
+.tab.droptarget { outline: 2px dashed var(--accent); outline-offset: 2px; color: var(--fg); }
+
+.dayhead { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.datebox { display: flex; flex-direction: column; gap: 4px; }
+.ghost { border: 1px solid var(--line); background: var(--surface); padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+.mini { border: 1px solid var(--line); background: transparent; border-radius: 7px; padding: 4px 9px; font-size: 13px; }
+.primary { border: 0; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--glow); color: var(--accent-fg); padding: 13px; border-radius: 10px; font-family: var(--display); font-size: 20px; text-transform: uppercase; letter-spacing: .03em; }
+.danger { border: 1px solid var(--line); background: transparent; color: var(--accent); padding: 11px 14px; border-radius: 10px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.actions .primary { flex: 1 1 200px; }
+
+.ex-top { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+.ex-name { font-weight: 600; font-size: 16px; }
+.ex-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.target { font-family: var(--display); font-size: 18px; white-space: nowrap; color: var(--accent); font-weight: 700; }
+.tag { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.last { font-size: 13px; color: var(--muted); }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--up-bg); color: var(--up); margin-left: 6px; }
+.sets { display: grid; grid-template-columns: 26px 1fr 1fr 44px; gap: 6px 8px; align-items: center; }
+.sets .h { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.sets .n { font-family: var(--display); font-size: 18px; color: var(--muted); text-align: center; }
+.sets input { width: 100%; font-size: 17px; font-variant-numeric: tabular-nums; padding: 9px 10px; }
+.sets input::placeholder { color: var(--muted); opacity: .55; }
+.chk { height: 42px; border: 1px solid var(--line); border-radius: 8px; background: transparent; font-size: 18px; color: var(--muted); }
+.chk.on { background: var(--up-bg); color: var(--up); border-color: transparent; }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { padding: 8px 10px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; white-space: nowrap; }
+th.exn { position: sticky; left: 0; background: var(--surface); font-weight: 600; white-space: normal; min-width: 120px; max-width: 150px; z-index: 1; border-right: 1px solid var(--line); }
+thead th { border-top: 0; }
+thead th button { border: 0; background: var(--sunk); padding: 3px 8px; border-radius: 6px; font-family: var(--display); font-size: 16px; }
+thead th button.cur { background: var(--accent); color: #fff; }
+td .s { display: block; line-height: 1.5; }
+td .s.top { font-weight: 600; }
+.hist { padding-inline: 0; }
+.hist > h3, .hist > p { padding-inline: 14px; }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+.tile b { display: block; font-family: var(--display); font-size: 30px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); }
+.bars { display: grid; gap: 9px; }
+.bar { display: grid; grid-template-columns: 110px 1fr 54px; gap: 10px; align-items: center; font-size: 14px; }
+.track { height: 10px; background: var(--sunk); border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 99px; }
+.fill { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.fill.ok { background: var(--up); }
+.bar .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.recs { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.recs b { font-family: var(--display); font-size: 20px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 label, .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; min-width: 0; }
+.grid2 input, .grid2 select { font-size: 17px; text-transform: none; letter-spacing: 0; }
+.plates { display: flex; align-items: center; gap: 3px; min-height: 90px; padding: 6px 0; overflow-x: auto; }
+.barend { width: 34px; height: 12px; background: var(--psm); border-radius: 2px; flex-shrink: 0; }
+.plate { border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; writing-mode: vertical-rl; transform: rotate(180deg); }
+.plate.light { color: #16191a; border: 1px solid var(--line); }
+.big { font-family: var(--display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.pct { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pct div { background: var(--sunk); border-radius: 8px; padding: 6px 8px; }
+.pct b { display: block; font-size: 15px; }
+.wu { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.wu div { display: flex; justify-content: space-between; background: var(--sunk); border-radius: 8px; padding: 8px 10px; }
+
+.pday { gap: 8px; }
+.pday-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.erow { border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; background: var(--bg); }
+.erow label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; min-width: 0; }
+.erow input, .erow select { font-size: 15px; text-transform: none; letter-spacing: 0; padding: 7px 8px; background: var(--surface); }
+.erow > label:first-child { grid-column: 1 / -1; }
+.erow .tools { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.erow .tools select { font-size: 13px; padding: 4px 6px; flex: 1 1 120px; background: var(--surface); }
+.rm { color: var(--accent) !important; }
+.titlein { width: 100%; font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+
+.nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); z-index: 25; }
+.nav button { border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: var(--muted); font-size: 12px; font-weight: 600; }
+.nav button svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--accent); }
+.status { font-size: 13px; color: var(--muted); }
+.exbtn { border: 0; background: transparent; padding: 0; text-align: left; display: inline-flex; align-items: center; gap: 8px; }
+.exbtn .ex-name { border-bottom: 1px dashed var(--muted); }
+.exbtn .sw { font-size: 13px; color: var(--accent); background: var(--accent-soft); border-radius: 99px; padding: 2px 8px; font-weight: 600; }
+.compose { -webkit-user-select: none; user-select: none; border: 1px solid var(--accent); box-shadow: var(--glow); background: var(--surface); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.compose-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.crow { display: grid; grid-template-columns: 34px 1fr auto 34px; gap: 6px; align-items: center; background: var(--sunk); border-radius: 10px; padding: 6px; touch-action: auto; position: relative; transition: transform .15s; }
+.crow.dragging { transition: none; z-index: 5; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.6), 0 0 0 2px var(--accent); }
+.handle { width: 34px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cname { border: 0; background: transparent; text-align: left; padding: 4px 2px; min-width: 0; display: flex; flex-direction: column; }
+.cname b { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cname small { color: var(--muted); font-size: 12px; }
+.step { display: flex; align-items: center; background: var(--bg); border-radius: 8px; }
+.step button { width: 30px; height: 34px; border: 0; background: transparent; font-size: 18px; color: var(--fg); }
+.step span { min-width: 22px; text-align: center; font-family: var(--display); font-size: 18px; }
+.more { width: 34px; height: 34px; border: 0; background: transparent; color: var(--muted); font-size: 18px; }
+.crow .opts { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 2px 2px; font-size: 13px; color: var(--muted); }
+.crow .opts .chip { font-size: 13px; padding: 5px 10px; }
+.addbig { border: 1.5px dashed var(--accent); background: transparent; color: var(--accent); border-radius: 10px; padding: 12px; font-weight: 600; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.quick .chip { border-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); }
+.st { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 99px; margin-right: 4px; }
+.st.todo { background: var(--accent); color: #fff; }
+.st.done { background: var(--up-bg); color: var(--up); }
+.st.prog { background: var(--sunk); color: var(--fg); }
+.st.next { background: var(--accent-soft); color: var(--accent); }
+.tab.next:not([aria-selected="true"]) { outline: 1.5px solid var(--accent); outline-offset: -1.5px; color: var(--fg); }
+.tab.next span { color: var(--accent); font-weight: 700; }
+.tab.next[aria-selected="true"] span { color: #fff; }
+.kcalrow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: end; }
+.kcalrow input { font-size: 17px; text-transform: none; letter-spacing: 0; }
+.kcalout { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; line-height: 1.35; }
+.kcalout b { color: var(--accent-2); font-size: 18px; }
+.kcalout small { color: var(--muted); }
+.imc { display: grid; gap: 6px; }
+.imcbar { position: relative; height: 10px; border-radius: 99px; background: linear-gradient(90deg, var(--warn) 0 17.5%, var(--up) 17.5% 50%, var(--warn) 50% 75%, var(--accent) 75% 100%); }
+.imcbar span { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; background: var(--fg); border-radius: 2px; box-shadow: 0 0 0 2px var(--bg); }
+.imcscale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kcalgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kcalgrid div { background: var(--sunk); border-radius: 10px; padding: 9px 11px; display: flex; flex-direction: column; gap: 2px; }
+.kcalgrid b { font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.kcalgrid .hl { background: var(--accent-soft); outline: 1px solid var(--accent); }
+.optrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; width: 100%; }
+.optrow > span { min-width: 62px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.crow .opts { flex-direction: column; align-items: flex-start; gap: 8px; }
+.summary { background: var(--bg); border-radius: 9px; padding: 8px 12px; display: grid; gap: 4px; font-size: 13px; }
+.summary span { color: var(--muted); }
+.proposal { border-color: var(--accent); box-shadow: var(--glow); }
+.plist { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.plist li b { color: var(--accent); }
+.keepbox { display: grid; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.keepbox select { font-size: 14px; padding: 8px; background: var(--sunk); }
+.pl-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.pl-top select { flex: 1 1 170px; font-size: 14px; padding: 6px 8px; background: var(--sunk); }
+.plist small.warn { color: var(--warn); }
+.pactions { display: grid; gap: 8px; }
+.pactions .ghost { padding: 11px 12px; }
+.plist small { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.wdlist { display: grid; gap: 8px; }
+.wdrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; background: var(--sunk); border-radius: 10px; padding: 10px; }
+.wdinfo { display: flex; flex-direction: column; min-width: 0; }
+.wdinfo b { font-weight: 600; }
+.wdinfo small { color: var(--muted); font-size: 12px; }
+.wdchips { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.wdc { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 7px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.wdc[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--glow); }
+.savebar { position: sticky; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 8; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.savebar .primary { flex: 0 0 auto; padding: 10px 16px; font-size: 18px; }
+.savestate { flex: 1; font-size: 14px; color: var(--muted); }
+.savebar.dirty { border-color: var(--accent); box-shadow: var(--glow); }
+.savebar.dirty .savestate { color: var(--fg); font-weight: 600; }
+.ex-meta { flex-direction: column; align-items: flex-end; gap: 4px; }
+.rest { background: var(--accent-soft); color: var(--fg); border-radius: 99px; padding: 3px 10px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rest b { color: var(--accent); font-weight: 700; }
+.backup textarea { font: 12px ui-monospace, Menlo, monospace; min-height: 90px; }
+.backup input[type=file] { width: 100%; font-size: 14px; }
+.pname { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left; font-size: 15px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--fg); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.pname span { color: var(--accent); font-weight: 400; }
+.sheet { position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet-in { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; top: calc(-12px - env(safe-area-inset-top, 0px)); background: var(--bg); padding-block: 8px; z-index: 2; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 6px 12px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+.chip[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.pick b { font-weight: 600; font-size: 15px; }
+.pick small { color: var(--muted); font-size: 12px; }
+.pick em { font-style: normal; font-size: 13px; color: var(--up); }
+.pick.cur { opacity: .5; }
+.picklist { display: grid; gap: 6px; }
+.sugg .pick { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--surface)); }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+.cal .wd { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding-bottom: 2px; }
+.cday { aspect-ratio: 1; max-width: 100%; border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; font-size: 14px; border: 1.5px solid transparent; background: transparent; padding: 0; position: relative; }
+.cday i { font-style: normal; font-size: 11px; line-height: 1; height: 11px; }
+.cday.done { background: var(--accent); color: #fff; font-weight: 700; box-shadow: 0 0 14px rgba(255,59,71,.45); }
+.cday.miss { border-color: var(--warn); color: var(--warn); }
+.cday.plan { border: 1.5px dashed var(--muted); color: var(--fg); }
+.cday.today { box-shadow: 0 0 0 2px var(--fg) inset; }
+.cday.out { visibility: hidden; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend span::before { content: ""; width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.lg-done::before { background: var(--accent); }
+.lg-miss::before { border: 1.5px solid var(--warn); }
+.lg-plan::before { border: 1.5px dashed var(--muted); }
+.slist { display: grid; gap: 6px; }
+.sitem { display: flex; justify-content: space-between; gap: 10px; align-items: center; width: 100%; text-align: left; background: var(--sunk); border: 0; border-radius: 9px; padding: 9px 12px; font-size: 14px; }
+.sitem small { color: var(--muted); }
+.toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; font-size: 14px; z-index: 40; }
+.rules { font-size: 14px; color: var(--muted); margin: 0; padding-left: 18px; }
+textarea { width: 100%; resize: vertical; min-height: 60px; }
+@media (max-width: 380px) { .bar { grid-template-columns: 88px 1fr 48px; } .tile b { font-size: 26px; } }
+@media (prefers-reduced-motion: no-preference) { .tab, .primary, .fill { transition: background .15s, color .15s, width .3s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Carnet <em>muscu</em></h1>
+  </header>
+  <main id="view" class="stack"></main>
+  <p class="status" id="status"></p>
+</div>
+
+
+<nav class="nav" id="nav" aria-label="Sections">
+  <button data-tab="seance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>Séance</button>
+  <button data-tab="calendrier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/></svg>Calendrier</button>
+  <button data-tab="progres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M5 15l4-5 4 3 6-7"/></svg>Progrès</button>
+  <button data-tab="outils"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Outils</button>
+  <button data-tab="programme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Programme</button>
+</nav>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="pk-title"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ================= données de base ================= */
+const MUSCLES = { pecs: "Pecs", dos: "Dos", epaules: "Épaules (côté)", arriere: "Arrière d'épaule", biceps: "Biceps", triceps: "Triceps", abdos: "Abdos", autre: "Autre" };
+const PRIORITY = ["pecs", "dos", "epaules"];   // tes points faibles
+/* bibliothèque : n = nom, m = muscle, q = matériel, c = polyarticulaire, r = raison si recommandé pour toi */
+const X = (n, m, q, c, r) => ({ n, m, q, c: !!c, r: r || "" });
+const LIBRARY = [
+  X("Développé incliné", "pecs", "Barre", 1, "Cible le haut des pecs, la zone la plus plate chez toi."),
+  X("Développé couché", "pecs", "Barre", 1, "L'exercice de base pour gagner de la force aux pecs."),
+  X("Développé décliné", "pecs", "Barre", 1),
+  X("Développé couché haltères", "pecs", "Haltères", 1),
+  X("Développé incliné haltères", "pecs", "Haltères", 1, "Haut des pecs avec plus d'amplitude qu'à la barre."),
+  X("Développé couché à la Smith", "pecs", "Smith", 1),
+  X("Développé incliné à la Smith", "pecs", "Smith", 1, "Haut des pecs, trajectoire guidée pour pousser lourd seul."),
+  X("Chest press machine", "pecs", "Machine", 1),
+  X("Chest press incliné machine", "pecs", "Machine", 1, "Haut des pecs en sécurité, facile d'aller près de l'échec."),
+  X("Pec fly machine", "pecs", "Machine", 0),
+  X("Écarté poulie vis-à-vis", "pecs", "Poulie", 0),
+  X("Écarté poulie basse vers le haut", "pecs", "Poulie", 0, "Isole le haut des pecs avec une tension constante."),
+  X("Écarté couché haltères", "pecs", "Haltères", 0),
+  X("Écarté incliné haltères", "pecs", "Haltères", 0),
+  X("Dips buste penché", "pecs", "Poids du corps", 1),
+  X("Dips assistés machine", "pecs", "Machine", 1),
+  X("Pompes", "pecs", "Poids du corps", 1),
+  X("Pompes pieds surélevés", "pecs", "Poids du corps", 1),
+  X("Tractions", "dos", "Poids du corps", 1, "Le meilleur exercice pour élargir le dos (le V)."),
+  X("Tractions assistées machine", "dos", "Machine", 1, "Pour faire des tractions propres tant que tu n'en enchaînes pas 8."),
+  X("Tractions prise serrée supination", "dos", "Poids du corps", 1),
+  X("Tirage vertical prise large", "dos", "Poulie", 1, "Largeur du dos, facile à charger progressivement."),
+  X("Tirage vertical prise neutre", "dos", "Poulie", 1),
+  X("Tirage vertical prise serrée supination", "dos", "Poulie", 1),
+  X("Tirage vertical unilatéral", "dos", "Poulie", 1),
+  X("Rowing barre", "dos", "Barre", 1, "Épaisseur du milieu du dos, ce qui te manque."),
+  X("Rowing barre en T", "dos", "Barre", 1),
+  X("Rowing haltère un bras", "dos", "Haltères", 1, "Grande amplitude, travaille chaque côté séparément."),
+  X("Rowing poitrine appuyée", "dos", "Haltères", 1, "Épaisseur du dos sans fatiguer le bas du dos."),
+  X("Rowing poitrine appuyée prise serrée", "dos", "Haltères", 1),
+  X("Rowing machine assis", "dos", "Machine", 1),
+  X("Tirage horizontal poulie", "dos", "Poulie", 1),
+  X("Tirage horizontal coudes ouverts", "dos", "Poulie", 1),
+  X("Rowing à la Smith", "dos", "Smith", 1),
+  X("Pull-over poulie", "dos", "Poulie", 0),
+  X("Shrug haltères", "dos", "Haltères", 0),
+  X("Extensions lombaires", "dos", "Poids du corps", 0),
+  X("Élévations latérales", "epaules", "Haltères", 0, "Élargit tes épaules, ton point le plus visible."),
+  X("Élévations latérales poulie", "epaules", "Poulie", 0, "Tension constante sur le côté de l'épaule, idéal pour élargir."),
+  X("Élévations latérales machine", "epaules", "Machine", 0),
+  X("Élévations latérales sur banc incliné", "epaules", "Haltères", 0),
+  X("Développé militaire haltères", "epaules", "Haltères", 1),
+  X("Développé militaire barre", "epaules", "Barre", 1),
+  X("Shoulder press machine", "epaules", "Machine", 1),
+  X("Développé épaules à la Smith", "epaules", "Smith", 1),
+  X("Tirage menton prise large", "epaules", "Poulie", 1),
+  X("Élévations frontales", "epaules", "Haltères", 0),
+  X("Face pull", "arriere", "Poulie", 0, "Corrige les épaules enroulées vers l'avant."),
+  X("Oiseau", "arriere", "Haltères", 0),
+  X("Reverse fly machine", "arriere", "Machine", 0, "Arrière d'épaule facile à isoler, sur la pec deck inversée."),
+  X("Oiseau poulie croisé", "arriere", "Poulie", 0),
+  X("Curl biceps", "biceps", "Barre", 0),
+  X("Curl EZ", "biceps", "Barre", 0),
+  X("Curl haltères alterné", "biceps", "Haltères", 0),
+  X("Curl incliné", "biceps", "Haltères", 0, "Biceps en étirement : très efficace pour la croissance."),
+  X("Curl marteau", "biceps", "Haltères", 0),
+  X("Curl pupitre machine", "biceps", "Machine", 0),
+  X("Curl poulie basse", "biceps", "Poulie", 0),
+  X("Curl concentré", "biceps", "Haltères", 0),
+  X("Curl araignée", "biceps", "Haltères", 0),
+  X("Extension triceps poulie", "triceps", "Poulie", 0),
+  X("Extension triceps corde", "triceps", "Poulie", 0),
+  X("Extension triceps au-dessus de la tête", "triceps", "Poulie", 0),
+  X("Barre au front", "triceps", "Barre", 0),
+  X("Extension haltère au-dessus de la tête", "triceps", "Haltères", 0),
+  X("Développé couché prise serrée", "triceps", "Barre", 1),
+  X("Triceps machine", "triceps", "Machine", 0),
+  X("Kickback poulie", "triceps", "Poulie", 0),
+  X("Dips banc", "triceps", "Poids du corps", 1),
+  X("Crunch poulie", "abdos", "Poulie", 0),
+  X("Relevés de jambes suspendu", "abdos", "Poids du corps", 0),
+  X("Crunch machine", "abdos", "Machine", 0),
+  X("Gainage planche", "abdos", "Poids du corps", 0),
+  X("Roue abdominale", "abdos", "Poids du corps", 0)
+];
+const EQ_WHY = { Barre: "Le plus efficace pour progresser en force.", Haltères: "Plus d'amplitude, corrige les écarts gauche/droite.", Machine: "Trajectoire guidée : tu peux pousser près de l'échec en sécurité.", Poulie: "Tension constante sur tout le mouvement.", Smith: "Guidé comme une machine, chargé comme une barre.", "Poids du corps": "Aucun réglage, efficace partout." };
+const libFind = (name) => LIBRARY.find(x => norm(x.n) === norm(name));
+const defaultReps = (x) => x.m === "epaules" && !x.c ? "12-20" : x.m === "abdos" ? "10-15" : x.c ? "6-10" : "10-15";
+const LIB = {}; LIBRARY.forEach(x => (LIB[x.m] ||= []).push(x.n));
+/* repos optimal selon le type d'exercice et la plage de reps (recommandations hypertrophie) :
+   polyarticulaire lourd (≤ 5 reps) 3 min · polyarticulaire 6-8 reps 2 min 30 · autres polyarticulaires 2 min
+   isolation 90 s · petits muscles ou séries longues (élévations, arrière d'épaule, abdos, ≥ 12 reps) 60 s */
+const lowRep = (r) => { const m = String(r ?? "").match(/\d+/); return m ? Number(m[0]) : 10; };
+function optimalRest(ex) {
+  const lib = libFind(ex.name); const low = lowRep(ex.reps);
+  const compound = lib ? lib.c : /(couché|incliné|décliné|press|tractions|rowing|tirage|militaire|dips|squat|soulevé)/i.test(ex.name || "");
+  const muscle = lib?.m || ex.muscle;
+  if (compound) return low <= 5 ? 180 : low <= 8 ? 150 : 120;
+  if (["epaules", "arriere", "abdos"].includes(muscle) || low >= 12) return 60;
+  return 90;
+}
+const fmtRest = (sec) => sec < 120 ? `${sec} s` : `${Math.floor(sec / 60)} min${sec % 60 ? " " + (sec % 60) : ""}`;
+const WD_NAMES = { dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6 };
+const dayWd = (d) => WD_NAMES[norm(d.label)] ?? null;
+const WD_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const roll = (wd) => wd == null ? 9 : (wd - new Date().getDay() + 7) % 7;   // 0 = aujourd'hui, 1 = demain…
+const byNext = (days) => [...days].sort((a, b) => roll(dayWd(a)) - roll(dayWd(b)));
+const sortDays = (days) => days.sort((a, b) => ((dayWd(a) ?? 7) + 6) % 7 - ((dayWd(b) ?? 7) + 6) % 7);
+const E = (id, name, sets, reps, muscle, rest) => ({ id, name, sets, reps, muscle, rest: rest || (/(couché|incliné|tractions|rowing barre|militaire|dips)/i.test(name) ? 150 : 90) });
+const DEFAULT_CFG = {
+  active: "B",
+  programs: {
+    B: { name: "B · 3 jours", days: [
+      { id: "lundi", label: "Lundi", title: "Pecs / Épaules", ex: [
+        E("lu-inc", "Développé incliné", 3, "6-10", "pecs"), E("lu-cou", "Développé couché", 3, "6-10", "pecs"),
+        E("lu-fly", "Pec fly machine", 3, "10-15", "pecs"), E("lu-dip", "Dips buste penché", 2, "8-12", "pecs"),
+        E("lu-lat", "Élévations latérales", 3, "12-20", "epaules") ] },
+      { id: "mardi", label: "Mardi", title: "Dos / Biceps", ex: [
+        E("ma-tra", "Tractions", 3, "6-12", "dos"), E("ma-row", "Rowing poitrine appuyée", 3, "8-12", "dos"),
+        E("ma-tir", "Tirage horizontal coudes ouverts", 3, "10-15", "dos"), E("ma-fp", "Face pull", 3, "12-20", "arriere"),
+        E("ma-cur", "Curl biceps", 3, "8-12", "biceps") ] },
+      { id: "jeudi", label: "Jeudi", title: "Haut du corps complet", ex: [
+        E("je-inc", "Développé incliné", 3, "8-12", "pecs"), E("je-tv", "Tirage vertical prise large", 3, "8-12", "dos"),
+        E("je-fly", "Pec fly machine", 3, "10-15", "pecs"), E("je-row", "Rowing haltère un bras", 3, "8-12", "dos"),
+        E("je-lat", "Élévations latérales", 3, "12-20", "epaules"), E("je-cur", "Curl incliné", 2, "10-12", "biceps") ] }
+    ] },
+    A: { name: "A · 4 jours", days: [
+      { id: "a-sam", label: "Samedi", title: "Pecs / Épaules lourd", ex: [
+        E("as-inc", "Développé incliné", 3, "6-10", "pecs"), E("as-cou", "Développé couché", 3, "6-10", "pecs"),
+        E("as-fly", "Pec fly machine", 3, "10-15", "pecs"), E("as-dip", "Dips buste penché", 2, "8-12", "pecs"),
+        E("as-lat", "Élévations latérales", 4, "12-20", "epaules") ] },
+      { id: "a-dim", label: "Dimanche", title: "Dos largeur / Biceps", ex: [
+        E("ad-tra", "Tractions", 3, "6-12", "dos"), E("ad-row", "Rowing poitrine appuyée", 3, "8-12", "dos"),
+        E("ad-tir", "Tirage horizontal coudes ouverts", 3, "10-15", "dos"), E("ad-fp", "Face pull", 3, "12-20", "arriere"),
+        E("ad-cur", "Curl biceps", 3, "8-12", "biceps") ] },
+      { id: "a-mar", label: "Mardi", title: "Pecs / Épaules volume", ex: [
+        E("am-inc", "Développé incliné", 3, "8-12", "pecs"), E("am-cou", "Développé couché", 3, "8-12", "pecs"),
+        E("am-fly", "Pec fly machine", 3, "10-15", "pecs"), E("am-dip", "Dips buste penché", 2, "8-12", "pecs"),
+        E("am-lat", "Élévations latérales", 4, "12-20", "epaules") ] },
+      { id: "a-jeu", label: "Jeudi", title: "Dos épaisseur / Bras", ex: [
+        E("aj-tv", "Tirage vertical prise large", 3, "8-12", "dos"), E("aj-row", "Rowing haltère un bras", 3, "8-12", "dos"),
+        E("aj-rps", "Rowing poitrine appuyée prise serrée", 2, "10-15", "dos"), E("aj-ois", "Oiseau", 3, "12-20", "arriere"),
+        E("aj-cin", "Curl incliné", 2, "10-12", "biceps"), E("aj-mar", "Curl marteau", 2, "10-12", "biceps") ] }
+    ] }
+  }
+};
+
+/* ================= utilitaires ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isoLocal = (d) => { d = new Date(d); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const today = () => isoLocal(new Date());
+const fmtDate = (iso) => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
+const fmtNum = (n, dec = 1) => (n == null || n === "" ? "" : String(Math.round(n * 10 ** dec) / 10 ** dec).replace(".", ","));
+const parseNum = (v) => { v = String(v ?? "").trim().replace(",", "."); if (!v) return null; const n = Number(v); return isFinite(n) ? n : null; };
+const topRep = (r) => { const m = String(r).match(/(\d+)\s*$/); return m ? Number(m[1]) : null; };
+const uid = () => Math.random().toString(36).slice(2, 9);
+const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+const e1rm = (kg, reps) => (kg > 0 && reps > 0 ? kg * (1 + Math.min(reps, 20) / 30) : 0);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const mondayOf = (iso) => { const d = new Date(iso + "T12:00:00"); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return isoLocal(d); };
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return isoLocal(d); };
+
+/* ================= état ================= */
+let cfg = clone(DEFAULT_CFG);
+let sessions = [];
+let weights = [];
+let profil = {};           // taille, âge, sexe, activité
+let tab = "seance";
+let curDate = today();
+let curDayByProg = {};
+let draft = null;          // copie du programme en cours d'édition
+let doneSets = new Set();  // séries cochées dans cette visite
+let progEx = null;         // exercice affiché dans Progrès
+let armed = null;          // bouton de confirmation en attente
+
+const prog = () => cfg.programs[cfg.active] || cfg.programs.B;
+/* une séance compte comme faite si tu l'as terminée, ou si elle a des séries et date d'avant aujourd'hui */
+const isDone = (s) => s.done || (Object.values(s.sets || {}).some(a => filled(a).length) && s.date < today());
+const cycleOrder = () => [...prog().days].sort((a, b) => ((dayWd(a) ?? 7) + 6) % 7 - ((dayWd(b) ?? 7) + 6) % 7);
+/* la prochaine séance : celle en cours aujourd'hui, sinon celle qui suit la dernière faite dans l'ordre du programme */
+function nextToDo() {
+  const order = cycleOrder(); if (!order.length) return null;
+  const ids = new Set(order.map(d => d.id));
+  const inProgress = sessions.find(s => s.date === today() && !s.done && ids.has(s.day) && Object.values(s.sets || {}).some(a => filled(a).length));
+  if (inProgress) return inProgress.day;
+  const last = sessions.filter(s => ids.has(s.day) && isDone(s)).sort((a, b) => b.date.localeCompare(a.date) || String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
+  if (!last) return (byNext(order)[0] || order[0]).id;   // pas encore d'historique : la séance prévue la plus proche
+  const i = order.findIndex(d => d.id === last.day);
+  return order[(i + 1) % order.length].id;
+}
+const defaultDay = () => nextToDo() || prog().days[0]?.id;
+let manualNav = false;       // true quand tu as choisi toi-même un jour ou une date
+let sessionsLoaded = false;
+function goToNext() { manualNav = false; curDate = today(); curDayByProg[cfg.active] = defaultDay(); }
+const curDayId = () => { let id = curDayByProg[cfg.active]; if (!id || !prog().days.find(d => d.id === id)) id = curDayByProg[cfg.active] = defaultDay(); return id; };
+const dayObj = () => prog().days.find(d => d.id === curDayId()) || prog().days[0];
+/* index des exercices du programme : recalculé seulement après un changement de programme (vidé à chaque rendu) */
+let _allEx = null;
+const allEx = () => { if (_allEx) return _allEx; const m = {}; Object.values(cfg.programs).forEach(p => p.days.forEach(d => d.ex.forEach(x => m[x.id] = x))); return _allEx = m; };
+/* séances triées de la plus récente à la plus ancienne, gardées tant que la liste ne change pas */
+let _sd = null, _sdSrc = null;
+const sessionsDesc = () => _sdSrc === sessions ? _sd : (_sdSrc = sessions, _sd = [...sessions].sort((a, b) => b.date.localeCompare(a.date)));
+const exName = (s, id) => s.names?.[id] || allEx()[id]?.name || null;
+const exMuscle = (s, id) => s.muscles?.[id] || allEx()[id]?.muscle || null;
+const filled = (arr) => (arr || []).filter(x => x && (x.kg != null || x.reps != null));
+
+/* derniers sets connus pour un exercice (même id, sinon même nom), avant une date */
+function lastFor(ex, beforeDate) {
+  const n = norm(ex.name);
+  for (const s of sessionsDesc()) {
+    if (s.date >= beforeDate) continue;
+    let sets = s.sets?.[ex.id];
+    if (!filled(sets).length) {
+      const key = Object.keys(s.sets || {}).find(k => norm(exName(s, k)) === n && filled(s.sets[k]).length);
+      sets = key ? s.sets[key] : null;
+    }
+    if (filled(sets).length) return { date: s.date, sets };
+  }
+  return null;
+}
+
+/* ================= stockage ================= */
+/* écritures envoyées mais pas encore confirmées : un instantané plus ancien du serveur ne doit pas les annuler à l'écran */
+const pending = new Map();   // "jour_date" -> séance enregistrée, ou null si supprimée
+function mergePending(list) {
+  pending.forEach((want, key) => {
+    const i = list.findIndex(x => `${x.day}_${x.date}` === key);
+    if (want === null) { if (i < 0) pending.delete(key); else list.splice(i, 1); }
+    else if (i >= 0 && list[i].updatedAt === want.updatedAt) pending.delete(key);
+    else if (i >= 0) list[i] = want; else list.push(want);
+  });
+  return list;
+}
+const store = {
+  mode: "local", db: null, cfgVersionSeen: false,
+  async init() {
+    let db = null;
+    try { db = window.claude?.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+    if (db) {
+      this.db = db; this.mode = "db";
+      db.collection("seances").orderBy("date", "desc").limit(1000).onSnapshot(
+        (snap) => { sessions = mergePending(snap.docs.map(d => d.data())); if (!sessionsLoaded) { sessionsLoaded = true; if (!manualNav) { goToNext(); if (tab === "seance") { render(); return; } } } refresh("sessions"); },
+        () => setStatus("Connexion perdue : recharge la page pour retrouver tes données."));
+      db.doc("config/profil").onSnapshot((snap) => { if (snap.exists) { profil = snap.data() || {}; refresh("weights"); } }, () => {});
+      db.collection("poids").orderBy("date", "asc").limit(1000).onSnapshot(
+        (snap) => { weights = snap.docs.map(d => d.data()); refresh("weights"); }, () => {});
+      db.doc("config/programme").onSnapshot((snap) => { if (snap.exists && cfgFromStore(snap.data())) refresh("cfg"); }, () => {});
+    } else {
+      setStatus("Données enregistrées sur cet appareil. Pense à les exporter de temps en temps (Outils).");
+      try { sessions = JSON.parse(localStorage.getItem("carnet-seances") || "[]"); } catch (e) {}
+      try { weights = JSON.parse(localStorage.getItem("carnet-poids") || "[]"); } catch (e) {}
+      try { profil = JSON.parse(localStorage.getItem("carnet-profil") || "{}") || {}; } catch (e) {}
+      try { const c = JSON.parse(localStorage.getItem("carnet-prog") || "null"); if (c) applyCfg(c); } catch (e) {}
+      sessionsLoaded = true; goToNext();
+      refresh("all");
+    }
+  },
+  _ls(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} },
+  /* la liste locale est mise à jour tout de suite : l'écran reflète l'action sans attendre le serveur */
+  async saveSession(s) {
+    sessions = sessions.filter(x => !(x.day === s.day && x.date === s.date)).concat([s]);
+    if (this.mode === "db") pending.set(`${s.day}_${s.date}`, s);
+    if (this.mode === "db") return this.db.collection("seances").doc(`${s.day}_${s.date}`).set(s);
+    this._ls("carnet-seances", sessions);
+  },
+  async deleteSession(day, date) {
+    sessions = sessions.filter(x => !(x.day === day && x.date === date));
+    if (this.mode === "db") pending.set(`${day}_${date}`, null);
+    if (this.mode === "db") return this.db.collection("seances").doc(`${day}_${date}`).delete();
+    this._ls("carnet-seances", sessions);
+  },
+  async saveWeight(w) {
+    if (this.mode === "db") weights = weights.filter(x => x.date !== w.date).concat([w]).sort((a, b) => a.date.localeCompare(b.date));
+    if (this.mode === "db") return this.db.collection("poids").doc(w.date).set(w);
+    weights = weights.filter(x => x.date !== w.date).concat([w]).sort((a, b) => a.date.localeCompare(b.date));
+    this._ls("carnet-poids", weights);
+  },
+  async deleteWeight(date) {
+    if (this.mode === "db") weights = weights.filter(x => x.date !== date);
+    if (this.mode === "db") return this.db.collection("poids").doc(date).delete();
+    weights = weights.filter(x => x.date !== date); this._ls("carnet-poids", weights);
+  },
+  async saveProfil(p) {
+    profil = p;
+    if (this.mode === "db") return this.db.doc("config/profil").set(p);
+    this._ls("carnet-profil", p);
+  },
+  async saveCfg(c) {
+    if (this.mode === "db") return this.db.doc("config/programme").set(c);
+    this._ls("carnet-prog", c);
+  }
+};
+let lastCfgJson = "", localSavedAt = 0;
+function cfgFromStore(c) {
+  const j = JSON.stringify(c);
+  if (j === lastCfgJson) return false;                 // rien de nouveau
+  if ((c.savedAt || 0) < localSavedAt) return false;   // plus ancien que notre dernière modif
+  lastCfgJson = j; applyCfg(c); return true;
+}
+function applyCfg(c) {
+  _allEx = null;
+  if (c.programs) { cfg = { ...clone(c), active: c.active || "B", savedAt: c.savedAt || 0, programs: { ...clone(DEFAULT_CFG.programs), ...clone(c.programs) } }; }
+  else if (c.days) { cfg = clone(DEFAULT_CFG); cfg.programs.B.days = c.days; } // ancienne version du carnet
+}
+let cfgWriting = false, cfgPending = false;
+/* garde la trace des jours prévus pour que le calendrier passé ne change pas quand tu modifies tes jours */
+function updatePlanHistory() {
+  const wds = prog().days.map(dayWd).filter(x => x != null).sort();
+  const ph = cfg.planHistory ||= [];
+  const last = ph[ph.length - 1];
+  if (last && last.wds.join() === wds.join()) return;
+  if (last && last.from === today()) last.wds = wds;
+  else ph.push({ from: ph.length ? today() : "0000-01-01", wds });
+}
+async function persistCfg(msg) {
+  updatePlanHistory(); _allEx = null;
+  cfg.savedAt = localSavedAt = Date.now();
+  lastCfgJson = JSON.stringify(cfg);
+  if (msg) toast(msg);
+  if (cfgWriting) { cfgPending = true; return; }   // une écriture à la fois : la suivante part avec l'état le plus récent
+  cfgWriting = true;
+  try {
+    do { cfgPending = false; const data = clone(cfg); lastCfgJson = JSON.stringify(data); await store.saveCfg(data); } while (cfgPending);
+  } catch (e) { toast("Échec de l'enregistrement du programme : réessaie"); }
+  finally { cfgWriting = false; }
+}
+
+function setStatus(t) { $("#status").textContent = t; }
+let toastT;
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
+
+/* ================= rendu principal ================= */
+function refresh(reason) {
+  if (drag || picker) return;
+  /* ne redessine que l'onglet concerné par la donnée qui a changé */
+  const concerns = { sessions: ["seance", "progres", "calendrier"], weights: ["progres"], cfg: ["seance", "progres", "calendrier", "programme"], all: ["seance", "progres", "calendrier", "programme", "outils"] }[reason] || [];
+  if (!concerns.includes(tab)) return;
+  if (tab === "programme" && draft && reason !== "all") return;
+  if (tab === "seance" && reason !== "all") {
+    const typing = document.activeElement?.matches?.("#view input, #view textarea");
+    if (typing || (reason === "sessions" && hasTyped() && $("#view .sets"))) {
+      renderHistOnly();
+
+      return;
+    }
+  }
+  if (tab === "progres" && document.activeElement?.matches?.("#view input")) return;
+  render();
+}
+function render() {
+  _allEx = null;
+  $$("#nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  const v = $("#view");
+  if (tab === "seance") { v.innerHTML = viewSeance(); updateKcal(); }
+  else if (tab === "progres") v.innerHTML = viewProgres();
+  else if (tab === "calendrier") v.innerHTML = viewCalendrier();
+  else if (tab === "outils") { v.innerHTML = viewOutils(); calcTools(); }
+  else { v.innerHTML = viewProgramme(); updateSaveBar(); }
+  armed = null;
+}
+
+/* ---------- Séance ---------- */
+function dayTabs() {
+  const p = prog();
+  const next = nextToDo(), cur = curDayId(), since = addDays(today(), -6);
+  return `<nav class="tabs" style="--n:${p.days.length}" role="tablist">${byNext(p.days).map(d => { const nx = d.id === next; const dn = sessions.some(s => s.day === d.id && isDone(s) && s.date >= since);
+    return `<button class="tab ${nx ? "next" : ""}" role="tab" aria-selected="${d.id === cur}" data-day="${d.id}"><b>${esc(p.days.length > 4 ? d.label.slice(0, 3) : d.label)}${dn ? " ✓" : ""}</b><span>${nx ? "▶ À faire" : esc(d.title)}</span></button>`; }).join("")}</nav>`;
+}
+const setLine = (sets) => filled(sets).map(x => `${fmtNum(x.kg) || "–"}×${x.reps ?? "–"}`).join(" · ");
+
+let composingFlag = false; // mode "composer la séance"
+let moreOpen = null;       // ligne dont les options sont ouvertes
+let typed = {};            // ce qui est tapé et pas encore enregistré
+const tkey = (id) => `${curDate}|${dayObj()?.id}|${id}`;
+const val = (id, fallback) => (tkey(id) in typed ? typed[tkey(id)] : fallback);
+let autoT = null, autoBusy = null;
+function hasTyped() { const p = `${curDate}|${dayObj()?.id}|`; return Object.keys(typed).some(k => k.startsWith(p)); }
+function scheduleAutosave() { clearTimeout(autoT); autoT = setTimeout(() => flushAutosave(), 1500); }
+/* enregistre la séance affichée si quelque chose a été tapé ; appelé avant tout changement de jour, date ou onglet */
+async function flushAutosave() {
+  clearTimeout(autoT); autoT = null;
+  if (tab !== "seance" || !$("#view .sets") || !hasTyped()) return;
+  const s = collect();
+  if (!Object.values(s.sets).some(a => filled(a).length)) return;
+  try { autoBusy = store.saveSession(s); await autoBusy; const el = $("#autostate"); if (el) el.textContent = `✓ Sauvegardé automatiquement à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; }
+  catch (e) { toast("Sauvegarde auto impossible : appuie sur Enregistrer"); }
+  finally { autoBusy = null; }
+}
+
+function suggestFor(d, n = 3) {
+  const names = d.ex.map(x => norm(x.name));
+  const muscles = [...new Set(d.ex.map(x => x.muscle))];
+  const focus = muscles.filter(m => PRIORITY.includes(m)).concat(muscles.filter(m => !PRIORITY.includes(m)));
+  return LIBRARY.filter(x => focus.includes(x.m) && !names.includes(norm(x.n)))
+    .sort((a, b) => (b.r ? 2 : 0) - (a.r ? 2 : 0) || focus.indexOf(a.m) - focus.indexOf(b.m)).slice(0, n);
+}
+
+function composeHtml(d) {
+  const others = prog().days.filter(x => x.id !== d.id);
+  return `<section class="compose" id="compose">
+    <div class="compose-head"><h3>Composer la séance</h3><button class="primary" id="compose-done" style="padding:8px 16px;font-size:17px">Terminé</button></div>
+    <label class="field" for="day-title">Nom de la séance<input id="day-title" value="${esc(d.title)}" style="font-size:16px;text-transform:none;letter-spacing:0"></label>
+    <p class="hint">Touche un exercice pour le changer · glisse ⠿ pour l'ordre · glisse-le sur un jour en haut pour l'y déplacer.</p>
+    ${d.ex.map((ex, i) => `<div class="crow" data-idx="${i}" data-ex="${ex.id}">
+      <button class="handle" aria-label="Glisser ${esc(ex.name)}">⠿</button>
+      <button class="cname" data-pickreplace="${ex.id}"><b>${esc(ex.name)}</b><small>${esc(MUSCLES[ex.muscle] || "")} · ${esc(ex.reps)} reps · repos ${fmtRest(optimalRest(ex))}</small></button>
+      <div class="step"><button data-rmset="${ex.id}" aria-label="Une série de moins" ${ex.sets <= 1 ? "disabled" : ""}>−</button><span aria-label="séries">${ex.sets}</span><button data-addset="${ex.id}" aria-label="Une série de plus">+</button></div>
+      <button class="more" data-more="${ex.id}" aria-expanded="${moreOpen === ex.id}" aria-label="Plus d'options">⋯</button>
+      ${moreOpen === ex.id ? `<div class="opts">
+        <div class="optrow"><span>Reps</span>${["5-8", "6-10", "8-12", "10-15", "12-20"].map(r => `<button class="chip" data-setreps="${ex.id}|${r}" aria-pressed="${ex.reps === r}">${r}</button>`).join("")}</div>
+        ${others.length ? `<div class="optrow"><span>Déplacer</span>${others.map(o => `<button class="chip" data-moveto="${ex.id}|${o.id}">${esc(o.label)}</button>`).join("")}</div>
+        <div class="optrow"><span>Copier</span>${others.map(o => `<button class="chip" data-copyto="${ex.id}|${o.id}">${esc(o.label)}</button>`).join("")}</div>` : ""}
+        <div class="optrow"><button class="chip rm" data-rmex="${ex.id}">Retirer l'exercice</button></div></div>` : ""}
+    </div>`).join("")}
+    <button class="addbig" id="addex-day">+ Ajouter un exercice</button>
+    ${suggestFor(d).length ? `<div class="quick"><span class="hint">Ajout rapide :</span>${suggestFor(d).map(x => `<button class="chip" data-quickadd="${LIBRARY.indexOf(x)}">+ ${esc(x.n)}</button>`).join("")}</div>` : ""}
+  </section>`;
+}
+
+function seanceStatus(d, existing) {
+  if (existing?.done) return `<span class="st done">✓ Terminée</span> Tu peux encore corriger tes perfs.`;
+  if (existing && curDate === today()) return `<span class="st prog">En cours</span> Sauvegardée automatiquement. Appuie sur Terminer à la fin.`;
+  if (existing) return `<span class="st prog">Non terminée</span> Séance du ${fmtDate(curDate)}.`;
+  if (curDate !== today()) return `Séance du ${fmtDate(curDate)}.`;
+  if (d.id !== nextToDo()) return `Ce n'est pas ta prochaine séance, mais tu peux la faire quand même.`;
+  const wd = dayWd(d), tw = new Date().getDay();
+  if (wd == null || wd === tw) return `<span class="st todo">À faire aujourd'hui</span> Coche ✓ chaque série faite.`;
+  /* dernière fois où ce jour était prévu, comparée à ta dernière séance faite */
+  const lastOcc = addDays(today(), -((tw - wd + 7) % 7));
+  const lastDone = sessions.filter(isDone).map(x => x.date).sort().pop() || "";
+  if (lastDone && lastOcc > lastDone) return `<span class="st todo">En retard</span> Prévue ${d.label.toLowerCase()} et pas encore faite : c'est ta prochaine séance.`;
+  const r = roll(wd);
+  return `<span class="st next">Prochaine</span> Prévue ${r === 1 ? "demain" : d.label.toLowerCase()}. Tu peux la faire dès aujourd'hui si tu veux.`;
+}
+function viewSeance() {
+  const d = dayObj();
+  if (!d) return `<p class="sub">Aucun jour dans ce programme. Ajoute-en un dans l'onglet Programme.</p>`;
+  const existing = sessions.find(s => s.day === d.id && s.date === curDate);
+  const composing = composingFlag || !d.ex.length;
+  return `${dayTabs()}
+  <div class="dayhead">
+    <div><h2>${esc(d.title)}</h2><p class="sub">${seanceStatus(d, existing)}</p></div>
+    <div class="datebox"><label class="label" for="date">Date</label><input type="date" id="date" value="${curDate}"></div>
+  </div>
+  ${composing ? composeHtml(d) : `<button class="ghost" id="compose-open" style="align-self:flex-start">✎ Composer la séance</button>`}
+  ${composing ? "" : d.ex.map((ex) => {
+    const cur = existing?.sets?.[ex.id] || [];
+    const last = lastFor(ex, curDate);
+    const ls = last?.sets || [];
+    const top = topRep(ex.reps);
+    const done = filled(ls).filter(s => s.reps != null);
+    const up = top && done.length >= ex.sets && done.slice(0, ex.sets).every(s => s.reps >= top);
+    const rows = Array.from({ length: ex.sets }, (_, i) => {
+      const c = cur[i] || {}, l = ls[i] || {};
+      const key = `${curDate}|${d.id}|${ex.id}|${i}`;
+      const kid = `kg-${ex.id}-${i}`, rid = `rp-${ex.id}-${i}`;
+      return `<span class="n">${i + 1}</span>
+        <input id="${kid}" inputmode="decimal" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} poids en kg" placeholder="${l.kg != null ? fmtNum(l.kg) : "kg"}" value="${esc(val(kid, c.kg != null ? fmtNum(c.kg) : ""))}">
+        <input id="${rid}" inputmode="numeric" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} répétitions" placeholder="${l.reps != null ? l.reps : "reps"}" value="${esc(val(rid, c.reps != null ? c.reps : ""))}">
+        <button class="chk ${doneSets.has(key) ? "on" : ""}" data-done="${ex.id}|${i}" aria-label="Série ${i + 1} faite">✓</button>`;
+    }).join("");
+    return `<article class="card">
+      <div class="ex-top">
+        <div><button class="exbtn" data-pickreplace="${ex.id}" aria-label="Changer ${esc(ex.name)}"><span class="ex-name">${esc(ex.name)}</span><span class="sw">⇄</span></button><div class="tag">${esc(MUSCLES[ex.muscle] || "")}</div></div>
+        <div class="ex-meta"><span class="target">${ex.sets} × ${esc(ex.reps)}</span><span class="rest">Repos <b>${fmtRest(optimalRest(ex))}</b></span></div>
+      </div>
+      <div class="last">${last ? `Dernière fois (${fmtDate(last.date)}) : ${setLine(ls)}` : "Pas encore de perf enregistrée"}${up ? `<span class="pill">↑ Monte la charge</span>` : ""}</div>
+      <div class="sets"><span></span><span class="h">Poids (kg)</span><span class="h">Reps</span><span></span>${rows}</div>
+    </article>`;
+  }).join("")}
+  ${composing ? "" : `<div class="kcalrow"><label class="field" for="duree">Durée (min)<input id="duree" inputmode="numeric" value="${esc(val("duree", existing?.duree || ""))}" placeholder="≈ ${estDuration(existing || { sets: {} }) || ""}"></label><div class="kcalout" id="kcalout"></div></div>
+  <label class="field" for="note">Note de séance<textarea id="note" placeholder="Forme, sommeil, douleurs, réglages machine…">${esc(val("note", existing?.note || ""))}</textarea></label>
+  <div class="actions">
+    <button class="primary" id="save">${existing?.done ? "Mettre à jour la séance" : "✓ Terminer la séance"}</button>
+    ${existing ? `<button class="danger" id="del">Supprimer</button>` : ""}
+  </div>
+  <p class="hint" id="autostate">${existing ? "Sauvegarde automatique activée" : "Tes perfs se sauvegardent toutes seules 1,5 s après la saisie"}</p>`}
+  <section class="card hist" id="hist">${histHtml()}</section>`;
+}
+function histHtml() {
+  const d = dayObj();
+  const list = sessions.filter(s => s.day === d.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+  if (!list.length) return `<h3>Suivi des charges · ${esc(d.label)}</h3><p class="sub">Chaque séance enregistrée devient une colonne ici : poids × reps pour chaque série.</p>`;
+  return `<h3>Suivi des charges · ${esc(d.label)}</h3>
+    <p class="sub">Une colonne par séance, la plus récente à gauche. Touche une date pour la modifier.</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="exn"></th>${list.map(s => `<th><button data-date="${s.date}" class="${s.date === curDate ? "cur" : ""}">${fmtDate(s.date)}</button></th>`).join("")}</tr></thead>
+      <tbody>${d.ex.map(ex => `<tr><th class="exn">${esc(ex.name)}</th>${list.map(s => {
+        const sets = filled(s.sets?.[ex.id]);
+        if (!sets.length) return `<td style="color:var(--muted)">–</td>`;
+        const maxKg = Math.max(...sets.map(x => x.kg ?? 0));
+        return `<td>${sets.map(x => `<span class="s ${x.kg === maxKg && maxKg > 0 ? "top" : ""}">${fmtNum(x.kg) || "–"} × ${x.reps ?? "–"}</span>`).join("")}</td>`;
+      }).join("")}</tr>`).join("")}</tbody>
+    </table></div>`;
+}
+function renderHistOnly() { const h = $("#hist"); if (h) h.innerHTML = histHtml(); }
+
+/* calories de la séance affichée, à partir de ce qui est saisi */
+function kcalLive() {
+  if (tab !== "seance" || !$("#view .sets")) {
+    const d = dayObj(); const ex = sessions.find(x => x.day === d?.id && x.date === curDate);
+    if (!ex) return weightOn(curDate) ? "🔥 Calories : remplis tes séries" : "🔥 Ajoute ton poids (Progrès) pour estimer les calories";
+    return `🔥 ≈ ${kcalFor(ex)} kcal brûlées`;
+  }
+  const s = collect(); const kg = weightOn(curDate);
+  if (!kg) return "🔥 Ajoute ton poids (Progrès) pour estimer les calories";
+  if (!Object.values(s.sets).some(a => filled(a).length)) return "🔥 Calories : remplis tes séries";
+  const min = Number(s.duree) || estDuration(s);
+  return `🔥 ≈ <b>${Math.round(MET_MUSCU * kg * min / 60)} kcal</b> brûlées<br><small>${min} min${s.duree ? "" : " estimées"} · ${fmtNum(kg)} kg</small>`;
+}
+function updateKcal() { const el = $("#kcalout"); if (el) el.innerHTML = kcalLive(); const du = $("#duree"); if (du && !du.value) du.placeholder = "≈ " + estDuration(collect()); }
+function collect() {
+  const d = dayObj();
+  const prev = sessions.find(x => x.day === d.id && x.date === curDate);
+  const sets = clone(prev?.sets || {}), names = clone(prev?.names || {}), muscles = clone(prev?.muscles || {});
+  d.ex.forEach(ex => {
+    names[ex.id] = ex.name; muscles[ex.id] = ex.muscle;
+    sets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({ kg: parseNum($(`#kg-${ex.id}-${i}`)?.value), reps: parseNum($(`#rp-${ex.id}-${i}`)?.value) }));
+  });
+  const dv = $("#duree") ? parseNum($("#duree").value) : parseNum(typed[tkey("duree")] ?? prev?.duree);
+  return { prog: cfg.active, day: d.id, label: d.label, title: d.title, date: curDate, sets, names, muscles, duree: dv || null, note: $("#note")?.value ?? typed[tkey("note")] ?? prev?.note ?? "", done: prev?.done || false, updatedAt: new Date().toISOString() };
+}
+
+/* modifie le programme depuis la séance (ce qui est tapé reste dans typed) */
+async function changeDay(dayId, fn, msg) {
+  const day = prog().days.find(x => x.id === dayId);
+  if (!day) return;
+  if (fn(day) === false) return;
+  render();
+  await persistCfg(msg);
+}
+
+/* ---------- Progrès ---------- */
+function viewProgres() {
+  const thisMon = mondayOf(today());
+  const weekS = sessions.filter(s => s.date >= thisMon && s.date <= addDays(thisMon, 6));
+  const monthKey = today().slice(0, 7);
+  const monthCount = sessions.filter(s => s.date.startsWith(monthKey)).length;
+  let streak = 0;
+  for (let w = 0; w < 104; w++) { const m = addDays(thisMon, -7 * w); const has = sessions.some(s => s.date >= m && s.date <= addDays(m, 6)); if (has) streak++; else if (w > 0) break; }
+  const target = prog().days.length;
+
+  // volume par muscle cette semaine vs prévu
+  const planned = {}; prog().days.forEach(d => d.ex.forEach(x => planned[x.muscle] = (planned[x.muscle] || 0) + Number(x.sets)));
+  const doneM = {};
+  weekS.forEach(s => Object.entries(s.sets || {}).forEach(([id, arr]) => { const m = exMuscle(s, id) || "autre"; doneM[m] = (doneM[m] || 0) + filled(arr).filter(x => x.reps != null).length; }));
+  const keys = Object.keys(MUSCLES).filter(k => planned[k] || doneM[k]);
+
+  // exercices avec données
+  const exMap = {};
+  sessions.forEach(s => Object.entries(s.sets || {}).forEach(([id, arr]) => {
+    const nm = exName(s, id); if (!nm || !filled(arr).length) return;
+    const k = norm(nm); (exMap[k] ||= { name: nm, pts: [] });
+    const best = Math.max(...filled(arr).map(x => e1rm(x.kg || 0, x.reps || 0)));
+    const maxKg = Math.max(...filled(arr).map(x => x.kg || 0));
+    const vol = filled(arr).reduce((a, x) => a + (x.kg || 0) * (x.reps || 0), 0);
+    exMap[k].pts.push({ date: s.date, e: best, kg: maxKg, vol, reps: Math.max(...filled(arr).map(x => x.reps || 0)) });
+  }));
+  Object.values(exMap).forEach(o => o.pts.sort((a, b) => a.date.localeCompare(b.date)));
+  const exKeys = Object.keys(exMap).sort((a, b) => exMap[a].name.localeCompare(exMap[b].name));
+  if (!progEx || !exMap[progEx]) progEx = exKeys.find(k => k.includes("incline")) || exKeys[0] || null;
+  const sel = progEx ? exMap[progEx] : null;
+  const bw = sel && Math.max(...sel.pts.map(p => p.e)) === 0;   // tractions, pompes… sans charge : on suit les reps
+  if (bw) sel.pts.forEach(p => p.e = p.reps);
+
+  const w = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+  const wLast = w[w.length - 1];
+  const w4 = w.filter(x => x.date <= addDays(today(), -28)).pop();
+  const wDelta = wLast && w4 ? wLast.kg - w4.kg : null;
+
+  return `<h2>Progrès</h2>
+  <div class="tiles">
+    <div class="tile"><b>${weekS.length}/${target}</b><span>séances cette semaine</span></div>
+    <div class="tile"><b>${monthCount}</b><span>séances ce mois</span></div>
+    <div class="tile"><b>${streak}</b><span>semaine${streak > 1 ? "s" : ""} d'affilée</span></div>
+  </div>
+  <section class="card">
+    <h3>Séries par muscle · cette semaine</h3>
+    <p class="sub">Séries faites (avec reps notées) face à ce que prévoit ton programme.</p>
+    <div class="bars">${keys.map(k => { const p = planned[k] || 0, dn = doneM[k] || 0, pc = p ? Math.min(100, dn / p * 100) : (dn ? 100 : 0);
+      return `<div class="bar"><span>${esc(MUSCLES[k])}</span><div class="track"><div class="fill ${dn >= p && p ? "ok" : ""}" style="width:${pc}%"></div></div><span class="v">${dn}/${p}</span></div>`; }).join("")}</div>
+  </section>
+  <section class="card chart">
+    <h3>Courbe de force</h3>
+    ${exKeys.length ? `<select id="progsel" aria-label="Exercice">${exKeys.map(k => `<option value="${esc(k)}" ${k === progEx ? "selected" : ""}>${esc(exMap[k].name)}</option>`).join("")}</select>
+      ${lineChart(sel.pts.map(p => ({ x: p.date, y: p.e })), bw ? "reps max" : "1RM estimé (kg)")}
+      <div class="recs">
+        <div><span class="label">Charge max</span><br><b>${fmtNum(Math.max(...sel.pts.map(p => p.kg)))} kg</b></div>
+        <div><span class="label">${bw ? "Reps max" : "1RM estimé"}</span><br><b>${fmtNum(Math.max(...sel.pts.map(p => p.e)))}${bw ? "" : " kg"}</b></div>
+        <div><span class="label">Séances</span><br><b>${sel.pts.length}</b></div>
+        ${sel.pts.length > 1 ? `<div><span class="label">Depuis le début</span><br><b style="color:var(--up)">${(sel.pts.at(-1).e - sel.pts[0].e >= 0 ? "+" : "")}${fmtNum(sel.pts.at(-1).e - sel.pts[0].e)}${bw ? " reps" : " kg"}</b></div>` : ""}
+      </div>
+      <p class="sub">1RM estimé = meilleure série de la séance avec la formule d'Epley (poids × (1 + reps/30)). Si la courbe monte, tu progresses, même si le poids change peu.</p>`
+      : `<p class="sub">Enregistre quelques séances : la courbe de chaque exercice apparaîtra ici.</p>`}
+  </section>
+  ${profilHtml()}
+  <section class="card chart">
+    <h3>Poids de corps</h3>
+    <div class="grid2">
+      <label>Date<input type="date" id="wdate" value="${today()}"></label>
+      <label>Poids (kg)<input id="wkg" inputmode="decimal" placeholder="${wLast ? fmtNum(wLast.kg) : "ex. 68,5"}"></label>
+    </div>
+    <button class="ghost" id="wsave">Enregistrer le poids</button>
+    ${w.length >= 2 ? lineChart(w.map(x => ({ x: x.date, y: x.kg })), "kg") : ""}
+    ${wLast ? `<div class="recs"><div><span class="label">Dernier</span><br><b>${fmtNum(wLast.kg)} kg</b></div>${wDelta != null ? `<div><span class="label">Sur 4 semaines</span><br><b>${wDelta >= 0 ? "+" : ""}${fmtNum(wDelta)} kg</b></div>` : ""}</div>
+      <p class="sub">${wDelta == null ? "Pèse-toi le matin à jeun, 2 à 3 fois par semaine." : wDelta < 0.1 ? "Tu ne prends pas : ajoute environ 200 kcal par jour." : wDelta > 0.8 ? "Prise rapide : réduis un peu les calories pour limiter le gras." : "Bon rythme de prise de masse propre."} Objectif : +0,25 à 0,5 kg par mois.</p>
+      <div class="scroll"><table><tbody><tr>${w.slice(-8).reverse().map(x => `<td>${fmtDate(x.date)}<br><b>${fmtNum(x.kg)}</b> <button class="mini" data-wdel="${x.date}" aria-label="Supprimer la pesée du ${fmtDate(x.date)}">✕</button></td>`).join("")}</tr></tbody></table></div>` : `<p class="sub">Pèse-toi le matin à jeun 2 à 3 fois par semaine pour suivre ta prise de masse.</p>`}
+  </section>`;
+}
+function lineChart(pts, unit) {
+  if (!pts.length) return "";
+  const W = 360, H = 190, L = 36, R = 10, T = 12, B = 26;
+  const ys = pts.map(p => p.y); let lo = Math.min(...ys), hi = Math.max(...ys);
+  if (hi - lo < 2) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * .12; lo = Math.max(0, lo - pad); hi += pad;
+  const t0 = new Date(pts[0].x).getTime(), t1 = new Date(pts.at(-1).x).getTime();
+  const X = (x) => pts.length === 1 ? (L + W - R) / 2 : L + (new Date(x).getTime() - t0) / Math.max(1, t1 - t0) * (W - L - R);
+  const Y = (y) => T + (1 - (y - lo) / (hi - lo)) * (H - T - B);
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join("");
+  const area = pts.length > 1 ? `${d}L${X(pts.at(-1).x).toFixed(1)},${H - B}L${X(pts[0].x).toFixed(1)},${H - B}Z` : "";
+  const last = pts.at(-1);
+  const xl = pts.length > 1 ? [pts[0], pts.at(-1)] : [pts[0]];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Graphique ${esc(unit)}">
+    ${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 8}" y="${Y(t) + 4}" text-anchor="end" font-size="12" fill="var(--muted)">${fmtNum(t, 0)}</text>`).join("")}
+    ${xl.map((p, i) => `<text x="${X(p.x)}" y="${H - 8}" text-anchor="${pts.length === 1 ? "middle" : i ? "end" : "start"}" font-size="12" fill="var(--muted)">${fmtDate(p.x)}</text>`).join("")}
+    ${area ? `<path d="${area}" fill="var(--accent)" fill-opacity=".1"/>` : ""}
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p => `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3" fill="var(--accent)"/>`).join("")}
+    <circle cx="${X(last.x)}" cy="${Y(last.y)}" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>
+  </svg>`;
+}
+
+/* ---------- Outils ---------- */
+function viewOutils() {
+  return `<h2>Outils</h2>
+  <section class="card">
+    <h3>Disques à mettre sur la barre</h3>
+    <div class="grid2">
+      <label>Charge totale (kg)<input id="pl-total" inputmode="decimal" value="60"></label>
+      <label>Barre<select id="pl-bar"><option value="20">Olympique 20 kg</option><option value="15">Femme 15 kg</option><option value="10">EZ / courte 10 kg</option><option value="7">EZ légère 7 kg</option></select></label>
+    </div>
+    <p class="sub" id="pl-text"></p>
+    <div class="plates" id="pl-vis" aria-hidden="true"></div>
+  </section>
+  <section class="card">
+    <h3>1RM et charges de travail</h3>
+    <div class="grid2">
+      <label>Poids soulevé (kg)<input id="rm-kg" inputmode="decimal" value="60"></label>
+      <label>Répétitions<input id="rm-reps" inputmode="numeric" value="8"></label>
+    </div>
+    <div><span class="label">1RM estimé</span><div class="big" id="rm-out"></div></div>
+    <p class="sub">Charge à viser selon le nombre de reps :</p>
+    <div class="pct" id="rm-pct"></div>
+  </section>
+  <section class="card">
+    <h3>Échauffement</h3>
+    <label class="field">Charge de ta 1re série de travail (kg)<input id="wu-kg" inputmode="decimal" value="60" style="font-size:17px;text-transform:none;letter-spacing:0"></label>
+    <div class="wu" id="wu-out"></div>
+  </section>
+  <section class="card backup">
+    <h3>Sauvegarde de mes données</h3>
+    <p class="sub">Séances, poids, profil et programme dans un seul fichier. Sert à changer d'appareil ou à passer d'une version de l'appli à l'autre.</p>
+    <button class="ghost" id="exp">⬇ Exporter mes données</button>
+    <textarea id="exp-out" readonly hidden aria-label="Données exportées"></textarea>
+    <p class="hint" id="exp-hint" hidden>Si le fichier ne s'est pas téléchargé, copie ce texte et garde-le dans tes notes.</p>
+    <label class="field" for="imp-file">Importer un fichier de sauvegarde<input type="file" id="imp-file" accept=".json,application/json,text/plain"></label>
+    <textarea id="imp-txt" placeholder="…ou colle ici le texte d'une sauvegarde" aria-label="Texte de sauvegarde à importer"></textarea>
+    <button class="ghost" id="imp">⬆ Importer</button>
+    <p class="hint">L'import ajoute les séances et pesées manquantes sans effacer les tiennes. Pour une même séance, la version la plus récente est gardée.</p>
+  </section>`;
+}
+const PLATES = [[25, "--p25", 86], [20, "--p20", 86], [15, "--p15", 78], [10, "--p10", 66], [5, "--p5", 52], [2.5, "--psm", 42], [1.25, "--psm", 36]];
+function calcTools() {
+  const total = parseNum($("#pl-total")?.value), bar = Number($("#pl-bar")?.value || 20);
+  if ($("#pl-text")) {
+    if (total == null || total < bar) { $("#pl-text").textContent = `Entre une charge d'au moins ${bar} kg.`; $("#pl-vis").innerHTML = ""; }
+    else {
+      let side = (total - bar) / 2; const used = [];
+      PLATES.forEach(([w]) => { while (side >= w - 1e-6) { used.push(w); side -= w; } });
+      const rest = Math.round(side * 2 * 100) / 100;
+      $("#pl-text").textContent = used.length ? `Par côté : ${used.map(w => fmtNum(w, 2)).join(" + ")} kg${rest ? ` (il manque ${fmtNum(rest, 2)} kg, arrondi impossible)` : ""}` : "Barre seule.";
+      $("#pl-vis").innerHTML = `<div class="barend"></div>` + used.map(w => { const p = PLATES.find(x => x[0] === w); const light = w === 5; return `<div class="plate ${light ? "light" : ""}" style="background:var(${p[1]});height:${p[2]}px;width:${w >= 10 ? 18 : 12}px">${w >= 10 ? w : ""}</div>`; }).join("") + `<div class="barend" style="width:60px"></div>`;
+    }
+  }
+  const kg = parseNum($("#rm-kg")?.value), reps = parseNum($("#rm-reps")?.value);
+  if ($("#rm-out")) {
+    const rm = kg && reps ? e1rm(kg, reps) : 0;
+    $("#rm-out").textContent = rm ? `${fmtNum(rm)} kg` : "–";
+    $("#rm-pct").innerHTML = rm ? [3, 5, 6, 8, 10, 12, 15, 20].map(r => `<div>${r} reps<b>${fmtNum(Math.round(rm / (1 + r / 30) / 1.25) * 1.25, 2)} kg</b></div>`).join("") : "";
+  }
+  const wk = parseNum($("#wu-kg")?.value);
+  if ($("#wu-out")) {
+    const r = (x) => Math.max(0, Math.round(x / 2.5) * 2.5);
+    $("#wu-out").innerHTML = wk ? [["Barre ou très léger", r(Math.min(20, wk * .4)), 10], ["50 %", r(wk * .5), 8], ["70 %", r(wk * .7), 4], ["85 %", r(wk * .85), 2]].map(([l, k, n]) => `<div><span>${l}</span><b>${fmtNum(k)} kg × ${n}</b></div>`).join("") + `<p class="sub">Repos court (1 min) entre ces séries, puis repos complet avant ta 1re série de travail.</p>` : "";
+  }
+}
+
+/* ---------- Programme ---------- */
+function viewProgramme() {
+  if (!draft) draft = clone(cfg.programs[cfg.active]);
+  const days = draft.days;
+  return `<div class="dayhead"><div><h2>Mon programme</h2><p class="sub">Change les exercices, déplace-les d'un jour à l'autre, échange des jours entiers. Quand tu sauvegardes, ce programme remplace tes séances.</p></div></div>
+  ${days.map((d, di) => `<section class="card pday" data-di="${di}">
+    <div class="pday-head"><span class="label">${esc(d.label)}</span>
+      <span class="row" style="display:flex;gap:6px;flex-wrap:wrap">
+        <select data-swapday="${di}" aria-label="Échanger ${esc(d.label)} avec un autre jour" style="font-size:13px;padding:4px 6px"><option value="">Échanger avec…</option>${days.map((o, oi) => oi !== di ? `<option value="${oi}">${esc(o.label)}</option>` : "").join("")}</select>
+      </span></div>
+    <input class="titlein" data-dtitle="${di}" value="${esc(d.title)}" aria-label="Nom de la séance du ${esc(d.label)}">
+    ${d.ex.map((ex, i) => `<div class="erow">
+      <label>Exercice<button class="pname" data-pname="${di}|${i}">${esc(ex.name || "Choisir…")}<span aria-hidden="true">⇄</span></button></label>
+      <label>Séries<input data-f="sets" data-di="${di}" data-i="${i}" inputmode="numeric" value="${ex.sets}"></label>
+      <label>Reps<input data-f="reps" data-di="${di}" data-i="${i}" value="${esc(ex.reps)}"></label>
+      <div class="tools">
+        <select data-f="muscle" data-di="${di}" data-i="${i}" aria-label="Muscle">${Object.entries(MUSCLES).map(([k, l]) => `<option value="${k}" ${k === ex.muscle ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
+        <span class="rest">Repos <b>${fmtRest(optimalRest(ex))}</b></span>
+        <button class="mini" data-pact="up" data-di="${di}" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+        <button class="mini" data-pact="down" data-di="${di}" data-i="${i}" ${i === d.ex.length - 1 ? "disabled" : ""} aria-label="Descendre">↓</button>
+        <select data-pmove="${di}|${i}" aria-label="Déplacer vers un autre jour"><option value="">Déplacer vers…</option>${days.map((o, oi) => oi !== di ? `<option value="${oi}">${esc(o.label)}</option>` : "").join("")}</select>
+        <button class="mini rm" data-pact="rm" data-di="${di}" data-i="${i}">Retirer</button>
+      </div></div>`).join("")}
+    <button class="ghost" data-padd="${di}">+ Ajouter un exercice</button>
+  </section>`).join("")}
+  <div class="savebar" id="savebar"><span id="savestate" class="savestate"></span><button class="primary" id="psave">💾 Sauvegarder</button></div>
+  <button class="ghost" id="pcancel">Annuler les modifications</button>
+  <button class="ghost" id="preset">✨ Répartition conseillée pour ${draft.days.length} séance${draft.days.length > 1 ? "s" : ""}</button>
+  <p class="sub">Tes perfs passées restent liées à chaque exercice, même si tu le renommes ou le déplaces.</p>`;
+}
+/* le programme en cours d'édition diffère-t-il de celui utilisé par la séance ? */
+function draftDirty() {
+  if (!draft) return false;
+  if (tab === "programme") syncDraft();
+  return JSON.stringify(draft) !== JSON.stringify(cfg.programs[cfg.active]);
+}
+function updateSaveBar() {
+  const st = $("#savestate"), bar = $("#savebar"); if (!st) return;
+  const dirty = draftDirty();
+  bar.classList.toggle("dirty", dirty);
+  st.textContent = dirty ? "Modifications non sauvegardées" : "Séances à jour ✓";
+}
+/* la sauvegarde du programme remplace tout ce qui a été fait ailleurs */
+async function saveDraft(msg) {
+  if (!draft) return;
+  syncDraft();
+  draft.days.forEach(day => day.ex = day.ex.filter(x => x.name.trim()));
+  cfg.programs[cfg.active] = clone(draft);
+  draft = clone(cfg.programs[cfg.active]);
+  await persistCfg(msg);
+}
+function syncDraft() {
+  if (!draft) return;
+  $$("[data-dtitle]").forEach(i => draft.days[+i.dataset.dtitle].title = i.value);
+  $$("#view [data-f]").forEach(i => {
+    const ex = draft.days[+i.dataset.di]?.ex[+i.dataset.i]; if (!ex) return;
+    const f = i.dataset.f;
+    if (f === "sets") ex.sets = Math.max(1, Math.min(10, parseInt(i.value, 10) || 1));
+    else ex[f] = i.value;
+  });
+}
+
+/* ================= choix d'exercice ================= */
+let picker = null;
+function fromLib(x, old, dayId) {
+  return { id: `${String(dayId).slice(0, 2)}-${uid()}`, name: x.n, muscle: x.m, sets: old?.sets || 3, reps: defaultReps(x), rest: x.c ? 150 : 90 };
+}
+function openPicker(opts) {
+  picker = { q: "", eq: "", ...opts, filterM: opts.muscle || "" };
+  document.body.style.overflow = "hidden";
+  const sh = $("#sheet"); sh.hidden = false; renderPicker(); sh.scrollTop = 0;
+}
+function closePicker() { picker = null; $("#sheet").hidden = true; $("#sheet").innerHTML = ""; document.body.style.overflow = ""; }
+function pickItem(x, why) {
+  const idx = LIBRARY.indexOf(x);
+  const isCur = picker.current && norm(picker.current) === norm(x.n);
+  return `<button class="pick ${isCur ? "cur" : ""}" data-pick="${idx}" ${isCur ? "disabled" : ""}><b>${esc(x.n)}</b><small>${esc(MUSCLES[x.m])} · ${esc(x.q)} · ${x.c ? "polyarticulaire" : "isolation"}${picker.exclude?.some(n => norm(n) === norm(x.n)) && !isCur ? " · déjà dans ce jour" : ""}</small>${why ? `<em>${esc(why)}</em>` : ""}</button>`;
+}
+function renderPicker() {
+  const p = picker; const m = p.muscle;
+  const curLib = p.current ? libFind(p.current) : null;
+  const pool = LIBRARY.filter(x => (m ? x.m === m : PRIORITY.includes(x.m)) && !p.exclude?.some(n => norm(n) === norm(x.n)) && !(p.current && norm(p.current) === norm(x.n)));
+  const score = (x) => (x.r ? 4 : 0) + (curLib && x.q !== curLib.q ? 1.5 : 0) + (x.c ? 1 : 0) + (PRIORITY.indexOf(x.m) >= 0 ? 1 - PRIORITY.indexOf(x.m) * .2 : 0);
+  const sugg = pool.sort((a, b) => score(b) - score(a)).slice(0, 4);
+  const eqs = [...new Set(LIBRARY.map(x => x.q))];
+  $("#sheet").innerHTML = `<div class="sheet-in">
+    <div class="sheet-head"><h2 id="pk-title">${esc(p.title)}</h2><button class="ghost" id="pk-close">Fermer</button></div>
+    ${sugg.length ? `<section class="stack sugg" style="gap:8px"><p class="label">Suggestions pour toi</p><div class="picklist">${sugg.map(x => pickItem(x, x.r || EQ_WHY[x.q])).join("")}</div></section>` : ""}
+    <section class="stack" style="gap:8px">
+      <p class="label">Tous les exercices</p>
+      <input id="pk-q" type="search" placeholder="Chercher : poulie, incliné, curl…" value="${esc(p.q)}" autocomplete="off">
+      <div class="chips">${[["", "Tous"], ...Object.entries(MUSCLES).filter(([k]) => k !== "autre")].map(([k, l]) => `<button class="chip" data-pm="${k}" aria-pressed="${p.filterM === k}">${esc(l)}</button>`).join("")}</div>
+      <div class="chips">${[["", "Tout matériel"], ...eqs.map(q => [q, q])].map(([k, l]) => `<button class="chip" data-pq="${esc(k)}" aria-pressed="${p.eq === k}">${esc(l)}</button>`).join("")}</div>
+      <div class="picklist" id="pk-list"></div>
+    </section>
+    <section class="card"><label class="field" for="pk-custom">Pas dans la liste ? Écris son nom<input id="pk-custom" placeholder="ex. Chest press convergent" style="font-size:16px;text-transform:none;letter-spacing:0"></label><button class="ghost" id="pk-usecustom">Utiliser ce nom</button></section>
+  </div>`;
+  renderPickerList();
+}
+function renderPickerList() {
+  const p = picker; const q = norm(p.q);
+  const list = LIBRARY.filter(x => (!p.filterM || x.m === p.filterM) && (!p.eq || x.q === p.eq) && (!q || norm(x.n + " " + x.q + " " + MUSCLES[x.m]).includes(q)));
+  $("#pk-list").innerHTML = list.length ? list.map(x => pickItem(x)).join("") : `<p class="sub">Aucun exercice ne correspond. Change les filtres ou écris son nom plus bas.</p>`;
+}
+
+/* ================= calories & IMC ================= */
+const MET_MUSCU = 5;   // musculation intense (Compendium of Physical Activities)
+const weightOn = (date) => { const w = [...weights].filter(x => x.date <= date).sort((a, b) => a.date.localeCompare(b.date)).pop() || [...weights].sort((a, b) => a.date.localeCompare(b.date))[0]; return w ? w.kg : null; };
+/* durée estimée : chaque série faite = ~40 s d'effort + le repos prévu, plus 8 min d'échauffement */
+function estDuration(s) {
+  let sec = 8 * 60;
+  Object.entries(s.sets || {}).forEach(([id, a]) => { const n = filled(a).length; const ex = allEx()[id]; const rest = ex ? optimalRest(ex) : 90; sec += n * (40 + rest); });
+  return Math.round(sec / 60);
+}
+function kcalFor(s) {
+  const kg = weightOn(s.date); if (!kg) return null;
+  const min = Number(s.duree) || estDuration(s);
+  return Math.round(MET_MUSCU * kg * min / 60);
+}
+function imcInfo() {
+  const kg = weightOn(today()), h = Number(profil.taille);
+  if (!kg || !h) return null;
+  const imc = kg / (h / 100) ** 2;
+  const cat = imc < 18.5 ? ["Maigreur", "var(--warn)"] : imc < 25 ? ["Corpulence normale", "var(--up)"] : imc < 30 ? ["Surpoids", "var(--warn)"] : ["Obésité", "var(--accent)"];
+  return { imc, cat: cat[0], color: cat[1], kg };
+}
+function besoins() {
+  const kg = weightOn(today()), h = Number(profil.taille), a = Number(profil.age);
+  if (!kg || !h || !a) return null;
+  const bmr = 10 * kg + 6.25 * h - 5 * a + (profil.sexe === "f" ? -161 : 5);   // Mifflin-St Jeor
+  const fact = { leger: 1.375, modere: 1.55, eleve: 1.725 }[profil.activite || "modere"];
+  const maint = bmr * fact;
+  return { bmr: Math.round(bmr), maint: Math.round(maint / 10) * 10, masse: Math.round((maint + 300) / 10) * 10, protMin: Math.round(kg * 1.6), protMax: Math.round(kg * 2) };
+}
+function profilHtml() {
+  const im = imcInfo(), be = besoins();
+  const mon = mondayOf(today());
+  const weekK = sessions.filter(s => s.date >= mon && validated(s)).reduce((t, s) => t + (kcalFor(s) || 0), 0);
+  const actDef = prog().days.length >= 4 ? "eleve" : prog().days.length >= 3 ? "modere" : "leger";
+  const pos = im ? Math.min(100, Math.max(0, (im.imc - 15) / (35 - 15) * 100)) : 0;
+  return `<section class="card" id="profil">
+    <h3>Profil, IMC et calories</h3>
+    <div class="grid2">
+      <label>Taille (cm)<input id="pf-taille" inputmode="numeric" value="${esc(profil.taille || "")}" placeholder="ex. 180"></label>
+      <label>Âge<input id="pf-age" inputmode="numeric" value="${esc(profil.age || "")}" placeholder="ex. 20"></label>
+      <label>Sexe<select id="pf-sexe"><option value="h" ${profil.sexe !== "f" ? "selected" : ""}>Homme</option><option value="f" ${profil.sexe === "f" ? "selected" : ""}>Femme</option></select></label>
+      <label>Activité<select id="pf-act">${[["leger", "Léger (1-2 séances)"], ["modere", "Modéré (3 séances)"], ["eleve", "Élevé (4+ séances)"]].map(([k, l]) => `<option value="${k}" ${(profil.activite || actDef) === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    </div>
+    <button class="ghost" id="pf-save">Enregistrer mon profil</button>
+    ${!weightOn(today()) ? `<p class="sub">Ajoute ton poids plus bas (Poids de corps) pour calculer ton IMC et tes calories.</p>` : ""}
+    ${im ? `<div class="imc">
+      <div class="top"><span class="label">IMC</span><b class="big" style="color:${im.color}">${fmtNum(im.imc)}</b></div>
+      <div class="imcbar" aria-hidden="true"><span style="left:${pos}%"></span></div>
+      <div class="imcscale"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>35</span></div>
+      <p class="sub"><b style="color:${im.color}">${im.cat}</b> · ${fmtNum(im.kg)} kg pour ${esc(profil.taille)} cm.${Number(profil.age) && Number(profil.age) < 18 ? " Avant 18 ans, l'IMC se lit avec les courbes de croissance (carnet de santé), pas avec ces seuils adultes." : " L'IMC ne distingue pas le muscle du gras : en prenant du muscle, il monte normalement."}</p>
+    </div>` : ""}
+    ${be ? `<div class="kcalgrid">
+      <div><span class="label">Métabolisme de base</span><b>${be.bmr} kcal</b></div>
+      <div><span class="label">Maintien</span><b>${be.maint} kcal</b></div>
+      <div class="hl"><span class="label">Prise de masse</span><b>${be.masse} kcal</b></div>
+      <div><span class="label">Protéines / jour</span><b>${be.protMin}-${be.protMax} g</b></div>
+    </div>
+    <p class="hint">Calories à manger par jour, estimées avec la formule de Mifflin-St Jeor. Prise de masse = maintien + 300 kcal. Ajuste avec la courbe de poids : vise +0,25 à 0,5 kg par mois.</p>` : ""}
+    ${weekK ? `<p class="sub">🔥 Cette semaine : <b>${weekK} kcal</b> brûlées en séance.</p>` : ""}
+  </section>`;
+}
+
+/* ================= répartition automatique ================= */
+let proposal = null;
+const TEMPLATES = {
+  PUSH_H: { title: "Pecs / Épaules lourd", main: ["pecs", "epaules", "triceps"], ex: [["Développé incliné", 3, "6-10"], ["Développé couché", 3, "6-10"], ["Pec fly machine", 3, "10-15"], ["Dips buste penché", 2, "8-12"], ["Élévations latérales", 4, "12-20"]] },
+  PULL_W: { title: "Dos largeur / Biceps", main: ["dos", "arriere", "biceps"], ex: [["Tractions", 3, "6-12"], ["Rowing poitrine appuyée", 3, "8-12"], ["Tirage horizontal coudes ouverts", 3, "10-15"], ["Face pull", 3, "12-20"], ["Curl biceps", 3, "8-12"]] },
+  PUSH_V: { title: "Pecs / Épaules volume", main: ["pecs", "epaules", "triceps"], ex: [["Développé incliné haltères", 3, "8-12"], ["Chest press machine", 3, "8-12"], ["Écarté poulie basse vers le haut", 3, "12-15"], ["Dips buste penché", 2, "8-12"], ["Élévations latérales poulie", 4, "12-20"]] },
+  PULL_T: { title: "Dos épaisseur / Bras", main: ["dos", "arriere", "biceps"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Rowing haltère un bras", 3, "8-12"], ["Rowing machine assis", 2, "10-15"], ["Oiseau", 3, "12-20"], ["Curl incliné", 2, "10-12"], ["Curl marteau", 2, "10-12"]] },
+  FULL: { title: "Haut du corps · pecs & dos", main: ["pecs", "dos", "epaules"], ex: [["Développé incliné", 3, "8-12"], ["Tirage vertical prise large", 3, "8-12"], ["Pec fly machine", 3, "10-15"], ["Rowing haltère un bras", 3, "8-12"], ["Élévations latérales", 3, "12-20"], ["Curl incliné", 2, "10-12"]] },
+  UP_A: { title: "Haut du corps · accent pecs", main: ["pecs", "dos", "epaules"], ex: [["Développé incliné", 3, "6-10"], ["Tractions", 3, "6-10"], ["Développé couché haltères", 3, "8-12"], ["Rowing poitrine appuyée", 3, "8-12"], ["Élévations latérales", 3, "12-20"], ["Extension triceps poulie", 2, "10-12"]] },
+  UP_B: { title: "Haut du corps · accent dos", main: ["dos", "pecs", "arriere"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Développé incliné haltères", 3, "8-12"], ["Rowing barre", 3, "6-10"], ["Pec fly machine", 3, "10-15"], ["Face pull", 3, "12-20"], ["Curl incliné", 3, "10-12"]] },
+  SH_ARMS: { title: "Épaules / Bras", main: ["epaules", "arriere", "biceps", "triceps"], ex: [["Développé militaire haltères", 3, "8-10"], ["Élévations latérales poulie", 4, "12-20"], ["Reverse fly machine", 3, "12-20"], ["Curl EZ", 3, "8-12"], ["Extension triceps au-dessus de la tête", 3, "10-12"], ["Curl marteau", 2, "10-12"]] }
+};
+const SPLITS = { 1: ["UP_A"], 2: ["UP_A", "UP_B"], 3: ["PUSH_H", "PULL_W", "FULL"], 4: ["PUSH_H", "PULL_W", "PUSH_V", "PULL_T"], 5: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T"], 6: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T", "FULL"], 7: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T", "FULL", "UP_B"] };
+const SPLIT_WHY = {
+  1: "Une seule séance : tout le haut du corps, en commençant par le haut des pecs et le dos.",
+  2: "Deux séances haut du corps : l'une démarre par les pecs, l'autre par le dos. Chaque muscle est travaillé 2 fois par semaine.",
+  3: "Poussée, tirage, puis une séance pecs & dos pour retravailler tes deux priorités une 2e fois dans la semaine.",
+  4: "Deux séances pecs/épaules et deux séances dos/bras : chaque muscle 2 fois par semaine, avec un jour lourd et un jour volume.",
+  5: "Le 4 jours, plus une séance épaules/bras pour élargir les épaules et grossir les bras.",
+  6: "Chaque muscle 2 à 3 fois par semaine. Attention à bien dormir et manger pour récupérer.",
+  7: "Tous les jours : c'est beaucoup. Garde au moins une séance légère et écoute ta récupération."
+};
+const TARGET = { pecs: 18, dos: 18, epaules: 10, arriere: 6, biceps: 8, triceps: 4 };
+const OVERLAP_W = { pecs: 3, dos: 3, epaules: 2, triceps: 1, biceps: 1, arriere: 1 };
+const consecutive = (a, b) => (a + 1) % 7 === b || (b + 1) % 7 === a;
+function overlap(k1, k2) { const m2 = TEMPLATES[k2].main; return TEMPLATES[k1].main.filter(m => m2.includes(m)).reduce((s, m) => s + (OVERLAP_W[m] || 1), 0); }
+function permutations(arr) { if (arr.length <= 1) return [arr]; return arr.flatMap((x, i) => permutations(arr.slice(0, i).concat(arr.slice(i + 1))).map(p => [x, ...p])); }
+/* place les séances sur les jours choisis en évitant de travailler les mêmes muscles 2 jours de suite */
+function recentMuscles(daysAgo) {
+  const date = addDays(today(), -daysAgo); const m = new Set();
+  sessions.filter(s => s.date === date && validated(s)).forEach(s => Object.entries(s.sets || {}).forEach(([id, a]) => { if (filled(a).length) m.add(exMuscle(s, id)); }));
+  return [...m];
+}
+/* pénalité si une séance prévue touche les muscles faits la veille (séances déjà enregistrées) */
+function recencyPenalty(key, wd) {
+  const r = roll(wd); let pen = 0;
+  [0, 1].forEach(ago => { if (r + ago === 1) pen += TEMPLATES[key].main.filter(m => recentMuscles(ago).includes(m)).reduce((s, m) => s + (OVERLAP_W[m] || 1), 0); });
+  return pen;
+}
+function planSplit(wds) {
+  wds = [...new Set(wds.filter(w => w != null))].sort((a, b) => roll(a) - roll(b));   // de la prochaine séance à la plus lointaine
+  const keys = SPLITS[Math.min(7, Math.max(1, wds.length))].slice(0, wds.length);
+  let best = null, bestScore = Infinity;
+  for (const perm of permutations(keys.map((k, i) => i))) {
+    let sc = 0;
+    for (let i = 0; i < wds.length; i++) for (let j = i + 1; j < wds.length; j++) if (consecutive(wds[i], wds[j])) sc += overlap(keys[perm[i]], keys[perm[j]]) * 10;
+    for (let i = 0; i < wds.length; i++) sc += recencyPenalty(keys[perm[i]], wds[i]) * 10;
+    sc += perm.reduce((s, k, i) => s + Math.abs(k - i), 0) * .01;
+    if (sc < bestScore) { bestScore = sc; best = perm; }
+  }
+  return wds.map((wd, i) => ({ wd, key: keys[best[i]] }));
+}
+function setsByMuscle(days) { const m = {}; days.forEach(d => d.ex.forEach(x => m[x.muscle] = (m[x.muscle] || 0) + Number(x.sets))); return m; }
+function tplSets(key) { const m = {}; TEMPLATES[key].ex.forEach(([n, s]) => { const mm = libFind(n)?.m || "autre"; m[mm] = (m[mm] || 0) + s; }); return m; }
+/* la séance qui complète le mieux les jours existants */
+function complementFor(days, wd) {
+  const cur = setsByMuscle(days);
+  const neigh = days.filter(d => dayWd(d) != null && consecutive(dayWd(d), wd));
+  const neighMain = neigh.flatMap(d => [...new Set(d.ex.map(x => x.muscle))]);
+  let best = null, bestSc = -Infinity;
+  Object.keys(TEMPLATES).forEach(k => {
+    const add = tplSets(k);
+    let gain = 0; Object.entries(TARGET).forEach(([m, tg]) => gain += Math.min(Math.max(0, tg - (cur[m] || 0)), add[m] || 0) * (PRIORITY.includes(m) ? 1.5 : 1));
+    const pen = TEMPLATES[k].main.filter(m => neighMain.includes(m)).reduce((s, m) => s + (OVERLAP_W[m] || 1), 0) * 2 + recencyPenalty(k, wd) * 2;
+    const sc = gain - pen;
+    if (sc > bestSc) { bestSc = sc; best = k; }
+  });
+  return best;
+}
+/* crée les jours ; garde l'id du jour (et donc l'historique) quand le jour de la semaine ne change pas */
+function buildDays(split, oldDays) {
+  return split.map(({ wd, key }) => {
+    const old = oldDays.find(d => dayWd(d) === wd);
+    const id = old?.id || `d${uid()}`;
+    return { id, label: WD_LABELS[wd], title: TEMPLATES[key].title, ex: TEMPLATES[key].ex.map(([n, sets, reps]) => {
+      const lib = libFind(n) || { m: "autre", c: false };
+      const prevEx = old?.ex.find(x => norm(x.name) === norm(n));
+      return { id: prevEx?.id || `${id.slice(0, 2)}-${uid()}`, name: n, sets, reps, muscle: lib.m, rest: lib.c ? 150 : 90 };
+    }) };
+  });
+}
+function proposalHtml() {
+  const p = proposal; const n = p.split.length;
+  const lines = p.split.map(({ wd, key }, i) => {
+    const clash = p.split.some((o, j) => j !== i && consecutive(o.wd, wd) && overlap(key, o.key) >= 3) || recencyPenalty(key, wd) >= 3;
+    const when = roll(wd) === 0 ? " (aujourd'hui)" : roll(wd) === 1 ? " (demain)" : "";
+    return `<li><div class="pl-top"><b>${WD_LABELS[wd]}${when}</b>
+      <select data-propkey="${i}" aria-label="Type de séance du ${WD_LABELS[wd]}">${Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}" ${k === key ? "selected" : ""}>${esc(t.title)}</option>`).join("")}</select></div>
+      <small>${TEMPLATES[key].ex.map(e => esc(e[0])).join(" · ")}</small>
+      ${clash ? `<small class="warn">⚠ Mêmes muscles que la veille ou le lendemain : récupération plus difficile.</small>` : ""}</li>`;
+  }).join("");
+  const head = p.kind === "add" ? `Tu passes à ${n} séances` : p.kind === "remove" ? `Tu passes à ${n} séance${n > 1 ? "s" : ""}` : `Meilleure répartition pour ${n} séance${n > 1 ? "s" : ""}`;
+  return `<section class="card proposal" id="proposal">
+    <h3>✨ ${head}</h3>
+    <p class="sub">${SPLIT_WHY[Math.min(7, n)]}</p>
+    <p class="hint">Dans l'ordre de tes prochaines séances. Change le type de chaque jour comme tu veux avant d'appliquer.</p>
+    <ol class="plist">${lines}</ol>
+    <div class="pactions">
+      <button class="primary" id="prop-apply">Appliquer cette répartition</button>
+      ${p.kind === "add" ? `<div class="keepbox"><span class="hint">Ou garde tes séances et ajoute seulement le ${WD_LABELS[p.wd].toLowerCase()} :</span>
+        <select id="prop-comp" aria-label="Séance à ajouter">${Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}" ${k === p.comp ? "selected" : ""}>${esc(t.title)}${k === p.comp ? " (conseillé)" : ""}</option>`).join("")}</select>
+        <button class="ghost" id="prop-keep">Ajouter seulement cette séance</button></div>` : ""}
+      <button class="ghost" id="prop-cancel">${p.kind === "add" ? "Annuler" : "Garder mes séances telles quelles"}</button>
+    </div>
+    <p class="hint">Appliquer remplace les exercices de chaque jour. Ton historique de charges est conservé.</p>
+  </section>`;
+}
+
+/* ================= calendrier ================= */
+let calMonth = today().slice(0, 7);
+let openSummary = null;
+const validated = (s) => Object.values(s.sets || {}).some(a => filled(a).length);
+function viewCalendrier() {
+  const [y, mo] = calMonth.split("-").map(Number);
+  const first = new Date(y, mo - 1, 1), nDays = new Date(y, mo, 0).getDate();
+  const lead = (first.getDay() + 6) % 7;
+  const curWds = new Set(prog().days.map(dayWd).filter(x => x != null));
+  const ph = cfg.planHistory || [];
+  const plannedOn = (iso) => { if (iso >= today()) return curWds; const e = [...ph].reverse().find(x => x.from <= iso); return e ? new Set(e.wds) : curWds; };
+  const valid = sessions.filter(validated);
+  const byDate = {}; valid.forEach(s => (byDate[s.date] ||= []).push(s));
+  const startDate = valid.map(s => s.date).sort()[0] || today();
+  const td = today();
+  let nDone = 0, nMiss = 0, nPlan = 0;
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(`<span class="cday out"></span>`);
+  for (let d = 1; d <= nDays; d++) {
+    const iso = `${calMonth}-${String(d).padStart(2, "0")}`;
+    const wd = new Date(y, mo - 1, d).getDay();
+    const planned = plannedOn(iso).has(wd);
+    let cls = "", mark = "", label = `${d}`;
+    if (byDate[iso]) { cls = "done"; mark = "✓"; nDone++; label += " : séance faite"; }
+    else if (planned && iso < td && iso >= startDate) { cls = "miss"; mark = "✕"; nMiss++; label += " : séance manquée"; }
+    else if (planned && iso >= td) { cls = "plan"; mark = "•"; nPlan++; label += " : séance prévue"; }
+    if (iso === td) cls += " today";
+    cells.push(`<button class="cday ${cls}" data-cal="${iso}" aria-label="${label}">${d}<i>${mark}</i></button>`);
+  }
+  const rate = nDone + nMiss ? Math.round(nDone / (nDone + nMiss) * 100) : null;
+  const monthName = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const list = valid.filter(s => s.date.startsWith(calMonth)).sort((a, b) => b.date.localeCompare(a.date));
+  const dayTitle = (s) => { const d = prog().days.find(x => x.id === s.day); return d ? `${d.label} · ${d.title}` : `${s.title || "Ancienne séance"}`; };
+  return `<h2>Calendrier</h2>
+  <div class="tiles">
+    <div class="tile"><b>${nDone}</b><span>séances validées</span></div>
+    <div class="tile"><b style="color:${nMiss ? "var(--warn)" : "inherit"}">${nMiss}</b><span>jours manqués</span></div>
+    <div class="tile"><b>${rate == null ? "–" : rate + " %"}</b><span>assiduité du mois</span></div>
+  </div>
+  <section class="card">
+    <div class="top"><button class="mini" data-calnav="-1" aria-label="Mois précédent">‹</button><h3 style="text-transform:capitalize">${esc(monthName)}</h3><button class="mini" data-calnav="1" aria-label="Mois suivant">›</button></div>
+    <div class="cal">${["L", "M", "M", "J", "V", "S", "D"].map(x => `<span class="wd">${x}</span>`).join("")}${cells.join("")}</div>
+    <div class="legend"><span class="lg-done">Séance faite</span><span class="lg-miss">Manquée</span><span class="lg-plan">Prévue</span></div>
+    <p class="sub">Une séance est validée dès que tu l'enregistres avec au moins une série. Les jours prévus suivent ton programme (${prog().days.map(d => esc(d.label.toLowerCase())).join(", ")}). Les jours manqués comptent à partir de ta première séance.${nPlan ? ` Encore ${nPlan} séance${nPlan > 1 ? "s" : ""} prévue${nPlan > 1 ? "s" : ""} ce mois-ci.` : ""}</p>
+  </section>
+  <section class="card" id="mesjours">
+    <div class="top"><h3>Mes jours de séance</h3><span class="pill" style="margin:0">${prog().days.length} / semaine</span></div>
+    <p class="sub">Touche un jour pour y placer la séance (s'il est pris, les deux échangent). Ajoute ou retire un jour : l'app te propose la meilleure répartition pour tes priorités (pecs, dos, épaules).</p>
+    <div class="wdlist">${byNext(prog().days).map(d => `<div class="wdrow">
+      <div class="wdinfo"><b>${esc(d.title)}</b><small>${esc(d.label)}${roll(dayWd(d)) === 0 ? " (aujourd'hui)" : roll(dayWd(d)) === 1 ? " (demain)" : ""} · ${d.ex.length} exercice${d.ex.length > 1 ? "s" : ""}</small></div>
+      <button class="mini rm" data-rmday="${d.id}" aria-label="Retirer la séance ${esc(d.title)}" ${prog().days.length <= 1 ? "disabled" : ""}>✕</button>
+      <div class="wdchips">${WD_ORDER.map(w => `<button class="wdc" data-setwd="${d.id}|${w}" aria-pressed="${dayWd(d) === w}" aria-label="${WD_LABELS[w]}">${WD_LABELS[w].slice(0, 2)}</button>`).join("")}</div>
+    </div>`).join("")}</div>
+    ${WD_ORDER.some(w => !prog().days.some(d => dayWd(d) === w)) ? `<div class="quick"><span class="hint">Ajouter une séance le :</span>${WD_ORDER.filter(w => !prog().days.some(d => dayWd(d) === w)).map(w => `<button class="chip" data-addday="${w}">+ ${WD_LABELS[w]}</button>`).join("")}</div>` : ""}
+  </section>
+  ${proposal ? proposalHtml() : `<button class="ghost" id="recalc">✨ Recalculer la meilleure répartition</button>`}
+  <section class="card">
+    <h3>Séances du mois</h3>
+    ${list.length ? `<div class="slist">${list.map(s => { const n = Object.values(s.sets || {}).reduce((a, x) => a + filled(x).length, 0); const vol = Object.values(s.sets || {}).flat().reduce((a, x) => a + ((x?.kg || 0) * (x?.reps || 0)), 0);
+      const k = `${s.day}|${s.date}`; const gone = !prog().days.some(x => x.id === s.day);
+      return `<button class="sitem" data-open="${esc(s.day)}|${s.date}"><span><b>${fmtDate(s.date)}</b> · ${esc(dayTitle(s))}<br><small>${n} série${n > 1 ? "s" : ""} · ${fmtNum(vol / 1000)} t soulevées${kcalFor(s) ? ` · 🔥 ${kcalFor(s)} kcal` : ""}${gone ? " · plus dans ton programme" : ""}</small></span><span aria-hidden="true">${openSummary === k ? "⌄" : "›"}</span></button>
+      ${openSummary === k ? `<div class="summary">${Object.entries(s.sets || {}).filter(([, a]) => filled(a).length).map(([id, a]) => `<div><b>${esc(exName(s, id) || "Exercice")}</b> <span>${setLine(a)}</span></div>`).join("")}${s.note ? `<p class="hint">${esc(s.note)}</p>` : ""}</div>` : ""}`; }).join("")}</div>`
+      : `<p class="sub">Aucune séance enregistrée ce mois-ci.</p>`}
+  </section>`;
+}
+
+/* ================= glisser-déposer (composer) ================= */
+let drag = null;
+async function moveExToDay(fromId, exId, toId) {
+  const target = prog().days.find(x => x.id === toId); if (!target) return;
+  let name = "";
+  await changeDay(fromId, (day) => {
+    const i = day.ex.findIndex(x => x.id === exId); if (i < 0) return false;
+    const [ex] = day.ex.splice(i, 1); name = ex.name;
+    prog().days.find(x => x.id === toId).ex.push(ex); moreOpen = null;
+  }, `Exercice déplacé vers ${target.label}`);
+}
+document.addEventListener("pointerdown", (e) => {
+  const h = e.target.closest(".handle"); if (!h || !$("#compose")) return;
+  e.preventDefault();
+  const row = h.closest(".crow"); const rows = $$("#compose .crow");
+  drag = { row, rows, from: +row.dataset.idx, to: +row.dataset.idx, y0: e.clientY, rects: rows.map(r => r.getBoundingClientRect()),
+    tabs: $$(".tab").map(t => ({ el: t, id: t.dataset.day, r: t.getBoundingClientRect() })), day: null, pid: e.pointerId };
+  row.classList.add("dragging");
+  try { h.setPointerCapture(e.pointerId); } catch (err) {}
+});
+document.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.pid) return;
+  e.preventDefault();
+  const dy = e.clientY - drag.y0;
+  drag.row.style.transform = `translateY(${dy}px)`;
+  const fr = drag.rects[drag.from]; const center = fr.top + fr.height / 2 + dy;
+  let to = 0;
+  drag.rects.forEach((r, i) => { if (i !== drag.from && center > r.top + r.height / 2) to++; });
+  drag.to = to;
+  const shift = fr.height + 8;
+  drag.rows.forEach((r, i) => { if (i === drag.from) return; let t = 0; if (drag.from < to && i > drag.from && i <= to) t = -shift; if (drag.from > to && i >= to && i < drag.from) t = shift; r.style.transform = t ? `translateY(${t}px)` : ""; });
+  const cur = drag.tabs.find(t => e.clientX >= t.r.left && e.clientX <= t.r.right && e.clientY >= t.r.top - 10 && e.clientY <= t.r.bottom + 10);
+  drag.tabs.forEach(t => t.el.classList.toggle("droptarget", t === cur && t.id !== curDayId()));
+  drag.day = cur && cur.id !== curDayId() ? cur.id : null;
+}, { passive: false });
+async function endDrag(e) {
+  if (!drag || (e && e.pointerId !== drag.pid)) return;
+  const { from, to, day, rows } = drag; const exId = drag.row.dataset.ex;
+  rows.forEach(r => { r.style.transform = ""; r.classList.remove("dragging"); });
+  $$(".tab.droptarget").forEach(t => t.classList.remove("droptarget"));
+  drag = null;
+  const dId = curDayId();
+  if (day) { await moveExToDay(dId, exId, day); return; }
+  if (to !== from && to >= 0) await changeDay(dId, (dd) => { const i = dd.ex.findIndex(x => x.id === exId); if (i < 0) return false; const [ex] = dd.ex.splice(i, 1); dd.ex.splice(Math.min(to, dd.ex.length), 0, ex); });
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
+
+/* ================= export / import ================= */
+async function exportData() {
+  const data = { app: "carnet-muscu", version: 1, exportedAt: new Date().toISOString(), sessions, weights, profil, cfg };
+  const json = JSON.stringify(data);
+  const out = $("#exp-out"); if (out) { out.value = json; out.hidden = false; $("#exp-hint").hidden = false; }
+  const filename = `carnet-muscu-${today()}.json`;
+  /* dans Claude : téléchargement via la plateforme ; ailleurs (GitHub) : lien classique */
+  let dl = null; try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+  if (dl) {
+    try { await dl.save({ filename, data: json }); toast("Sauvegarde téléchargée"); }
+    catch (e) { toast(e?.code === "declined" ? "Téléchargement annulé : le texte reste copiable" : "Copie le texte affiché pour garder ta sauvegarde"); }
+    return;
+  }
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch (e) {}
+  try { navigator.clipboard?.writeText(json).then(() => toast("Sauvegarde exportée et copiée"), () => toast("Sauvegarde exportée")); } catch (e) { toast("Sauvegarde exportée"); }
+}
+async function importData(data) {
+  let ns = 0, nw = 0, nc = false;
+  for (const s of data.sessions) {
+    if (!s || !s.day || !s.date) continue;
+    const mine = sessions.find(x => x.day === s.day && x.date === s.date);
+    if (mine && String(mine.updatedAt || "") >= String(s.updatedAt || "")) continue;
+    await store.saveSession(s); ns++;
+  }
+  for (const w of data.weights || []) {
+    if (!w || !w.date || !(w.kg > 0) || weights.some(x => x.date === w.date)) continue;
+    await store.saveWeight({ date: w.date, kg: w.kg }); nw++;
+  }
+  if (data.profil && Object.keys(data.profil).length && !Object.keys(profil).length) await store.saveProfil(data.profil);
+  if (data.cfg?.programs && (data.cfg.savedAt || 0) > (cfg.savedAt || 0)) {
+    applyCfg(data.cfg); draft = null; nc = true;
+    cfg.savedAt = localSavedAt = Date.now(); lastCfgJson = JSON.stringify(cfg); await store.saveCfg(clone(cfg));
+  }
+  goToNext();
+  return { s: ns, w: nw, c: nc };
+}
+
+/* ================= confirmation en deux temps ================= */
+function confirmTap(btn, text) {
+  if (armed === btn) { armed = null; return true; }
+  armed = btn; btn.dataset.orig = btn.textContent; btn.textContent = text;
+  setTimeout(() => { if (armed === btn) { armed = null; btn.textContent = btn.dataset.orig; } }, 3500);
+  return false;
+}
+
+/* ================= événements ================= */
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  const ds = t.dataset;
+
+  /* --- choix d'exercice --- */
+  if (picker) {
+    if (t.id === "pk-close") { closePicker(); return; }
+    if (ds.pm != null && t.classList.contains("chip")) { picker.filterM = ds.pm; $$("[data-pm]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pm === ds.pm)); renderPickerList(); return; }
+    if (ds.pq != null && t.classList.contains("chip")) { picker.eq = ds.pq; $$("[data-pq]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pq === ds.pq)); renderPickerList(); return; }
+    if (ds.pick) { const x = LIBRARY[+ds.pick]; const cb = picker.onPick; closePicker(); await cb(x); return; }
+    if (t.id === "pk-usecustom") { const n = $("#pk-custom").value.trim(); if (!n) { $("#pk-custom").focus(); return; } const x = libFind(n) || { n, m: picker.muscle || "autre", q: "", c: false }; const cb = picker.onPick; closePicker(); await cb(x); return; }
+    return;
+  }
+
+  /* tout changement de jour, de date ou d'onglet enregistre d'abord la saisie en cours */
+  if (ds.tab || ds.day || ds.cal || ds.open || (ds.date && t.closest("thead"))) await flushAutosave();
+
+  /* --- calendrier --- */
+  if (ds.setwd) {
+    const [id, w] = ds.setwd.split("|"); const wd = +w;
+    const days = prog().days; const day = days.find(x => x.id === id); if (!day || dayWd(day) === wd) return;
+    const other = days.find(x => x !== day && dayWd(x) === wd);
+    if (other) other.label = day.label;
+    day.label = WD_LABELS[wd]; sortDays(days); proposal = null;
+    render(); await persistCfg(other ? `${day.title} ⇄ ${other.title}` : `${day.title} → ${WD_LABELS[wd]}`); return;
+  }
+  if (ds.addday) {
+    const wd = +ds.addday; const wds = prog().days.map(dayWd).concat([wd]);
+    proposal = { kind: "add", wd, split: planSplit(wds), comp: complementFor(prog().days, wd) };
+    render(); $("#proposal")?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
+  }
+  if (ds.rmday) {
+    const days = prog().days; if (days.length <= 1) return;
+    if (!confirmTap(t, "Sûr ?")) return;
+    const i = days.findIndex(x => x.id === ds.rmday); if (i < 0) return;
+    const [rm] = days.splice(i, 1);
+    proposal = { kind: "remove", split: planSplit(days.map(dayWd)) };
+    render(); await persistCfg(`${rm.title} retirée (historique conservé)`);
+    $("#proposal")?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
+  }
+  if (t.id === "recalc") { proposal = { kind: "recalc", split: planSplit(prog().days.map(dayWd)) }; render(); $("#proposal")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  if (t.id === "prop-cancel") { proposal = null; render(); return; }
+  if (t.id === "prop-apply") {
+    const p = proposal; proposal = null;
+    cfg.programs[cfg.active].days = buildDays(p.split, prog().days);
+    render(); await persistCfg(`Nouvelle répartition sur ${p.split.length} séances`); return;
+  }
+  if (t.id === "prop-keep") {
+    const p = proposal; proposal = null;
+    if (p.kind === "add") {
+      const days = prog().days;
+      days.push(buildDays([{ wd: p.wd, key: p.comp }], [])[0]); sortDays(days);
+      render(); await persistCfg(`${TEMPLATES[p.comp].title} ajoutée le ${WD_LABELS[p.wd].toLowerCase()}`);
+    } else render();
+    return;
+  }
+  if (ds.calnav) { const [y, m] = calMonth.split("-").map(Number); const d = new Date(y, m - 1 + Number(ds.calnav), 1); calMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; render(); return; }
+  if (ds.cal) {
+    const ss = sessions.filter(s => s.date === ds.cal && validated(s));
+    if (ss.length && prog().days.some(x => x.id === ss[0].day)) curDayByProg[cfg.active] = ss[0].day;
+    else { const p = prog(); const wd = new Date(ds.cal + "T12:00:00").getDay(); const d = p.days.find(x => dayWd(x) === wd); if (d) curDayByProg[cfg.active] = d.id; }
+    manualNav = true; curDate = ds.cal; tab = "seance"; doneSets.clear(); render(); window.scrollTo({ top: 0 }); return;
+  }
+  if (ds.open) {
+    const [day, date] = ds.open.split("|");
+    if (!prog().days.some(x => x.id === day)) { openSummary = openSummary === `${day}|${date}` ? null : `${day}|${date}`; render(); return; }
+    manualNav = true; curDayByProg[cfg.active] = day; curDate = date; tab = "seance"; render(); window.scrollTo({ top: 0 }); return;
+  }
+
+  if (ds.tab) {
+    if (tab === "programme" && ds.tab !== "programme") { if (draftDirty()) await saveDraft("Programme sauvegardé automatiquement"); draft = null; }
+    tab = ds.tab; composingFlag = false; render(); window.scrollTo({ top: 0 }); return;
+  }
+  if (ds.day) { manualNav = true; curDayByProg[cfg.active] = ds.day; render(); return; }
+  if (ds.date && t.closest("thead")) { manualNav = true; curDate = ds.date; render(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+
+  /* --- séance --- */
+  if (ds.done) {
+    const [exId, i] = ds.done.split("|"); const ex = dayObj().ex.find(x => x.id === exId); if (!ex) return;
+    const key = `${curDate}|${dayObj().id}|${exId}|${i}`;
+    if (doneSets.has(key)) { doneSets.delete(key); t.classList.remove("on"); return; }
+    const kg = $(`#kg-${exId}-${i}`), rp = $(`#rp-${exId}-${i}`);
+    if (!kg.value && kg.placeholder && kg.placeholder !== "kg") kg.value = kg.placeholder;
+    if (!rp.value && rp.placeholder && rp.placeholder !== "reps") rp.value = rp.placeholder;
+    typed[tkey(kg.id)] = kg.value; typed[tkey(rp.id)] = rp.value; doneSets.add(key); t.classList.add("on"); scheduleAutosave(); updateKcal();
+    return;
+  }
+  if (t.id === "compose-open") { await flushAutosave(); composingFlag = true; moreOpen = null; render(); return; }
+  if (t.id === "compose-done") { composingFlag = false; moreOpen = null; render(); return; }
+  if (ds.more) { moreOpen = moreOpen === ds.more ? null : ds.more; render(); return; }
+  const d = dayObj();
+  const findEx = (id) => d.ex.findIndex(x => x.id === id);
+  if (ds.pickreplace) {
+    const i = findEx(ds.pickreplace); const old = d.ex[i];
+    openPicker({ title: `Remplacer ${old.name}`, muscle: old.muscle, current: old.name, exclude: d.ex.map(x => x.name),
+      onPick: (x) => changeDay(d.id, (dd) => { const j = dd.ex.findIndex(e => e.id === old.id); if (j < 0) return false; dd.ex[j] = fromLib(x, dd.ex[j], dd.id); }, `${old.name} → ${x.n}`) });
+    return;
+  }
+  if (ds.setreps) { const [id, r] = ds.setreps.split("|"); await changeDay(d.id, (dd) => { const ex = dd.ex.find(e => e.id === id); if (!ex || ex.reps === r) return false; ex.reps = r; }); return; }
+  if (ds.copyto) {
+    const [id, to] = ds.copyto.split("|"); const src = d.ex.find(e => e.id === id); const target = prog().days.find(x => x.id === to); if (!src || !target) return;
+    await changeDay(to, (dd) => { dd.ex.push({ ...clone(src), id: `${String(to).slice(0, 2)}-${uid()}` }); }, `${src.name} copié vers ${target.label}`); return;
+  }
+  if (ds.moveto) {
+    const [id, to] = ds.moveto.split("|"); await moveExToDay(d.id, id, to); return;
+  }
+  if (ds.addset || ds.rmset) {
+    const id = ds.addset || ds.rmset, inc = ds.addset ? 1 : -1;
+    await changeDay(d.id, (dd) => { const ex = dd.ex.find(e => e.id === id); if (!ex) return false; ex.sets = Math.max(1, Math.min(10, ex.sets + inc)); });
+    return;
+  }
+  if (ds.rmex) {
+    if (!confirmTap(t, "Sûr ?")) return;
+    const i = findEx(ds.rmex); const ex = d.ex[i];
+    await changeDay(d.id, (dd) => { const j = dd.ex.findIndex(e => e.id === ex.id); if (j < 0) return false; dd.ex.splice(j, 1); moreOpen = null; }, `${ex.name} retiré`);
+    return;
+  }
+  if (ds.quickadd) { const x = LIBRARY[+ds.quickadd]; await changeDay(d.id, (dd) => { dd.ex.push(fromLib(x, null, dd.id)); }, `${x.n} ajouté`); return; }
+  if (t.id === "addex-day") {
+    const muscles = d.ex.map(x => x.muscle);
+    const focus = PRIORITY.find(m => muscles.includes(m)) || muscles[0] || "pecs";
+    openPicker({ title: `Ajouter à ${d.label}`, muscle: focus, exclude: d.ex.map(x => x.name),
+      onPick: (x) => changeDay(d.id, (dd) => { dd.ex.push(fromLib(x, null, dd.id)); }, `${x.n} ajouté`) });
+    return;
+  }
+  if (t.id === "save") {
+    const s = collect();
+    const any = Object.values(s.sets).some(a => a.some(x => x.kg != null || x.reps != null));
+    if (!any) { toast("Remplis au moins une série"); return; }
+    t.disabled = true;
+    clearTimeout(autoT);
+    const finishing = !s.done;
+    s.done = true;
+    try {
+      await store.saveSession(s);
+      if (finishing) {
+        const doneTitle = dayObj().title;
+        goToNext(); doneSets.clear(); render(); window.scrollTo({ top: 0, behavior: "smooth" });
+        const nx = dayObj();
+        toast(`Séance terminée 💪 Prochaine : ${nx.title}`);
+      } else { render(); toast("Séance mise à jour"); }
+    }
+    catch (err) { t.disabled = false; toast(err?.code === "quota_exceeded" ? "Stockage plein : supprime d'anciennes séances" : "Échec de l'enregistrement, réessaie"); }
+    return;
+  }
+  if (t.id === "del") {
+    if (!confirmTap(t, "Confirmer la suppression")) return;
+    clearTimeout(autoT); if (autoBusy) await autoBusy.catch(() => {});
+    const pre = `${curDate}|${d.id}|`; Object.keys(typed).forEach(k => { if (k.startsWith(pre)) delete typed[k]; });
+    doneSets.forEach(k => { if (k.startsWith(`${curDate}|${d.id}|`)) doneSets.delete(k); });
+    try { await store.deleteSession(d.id, curDate); render(); toast("Séance supprimée"); } catch (err) { toast("Suppression impossible"); }
+    return;
+  }
+
+  /* --- progrès --- */
+  if (t.id === "pf-save") {
+    const taille = parseNum($("#pf-taille").value), age = parseNum($("#pf-age").value);
+    if (!taille || taille < 120 || taille > 230) { toast("Entre ta taille en cm (ex. 180)"); return; }
+    if (age != null && (age < 10 || age > 100)) { toast("Entre un âge valide"); return; }
+    try { await store.saveProfil({ taille, age, sexe: $("#pf-sexe").value, activite: $("#pf-act").value }); render(); toast("Profil enregistré"); } catch (err) { toast("Échec de l'enregistrement"); }
+    return;
+  }
+  if (t.id === "wsave") {
+    const kg = parseNum($("#wkg").value), date = $("#wdate").value;
+    if (!kg || kg < 30 || kg > 250 || !date) { toast("Entre un poids valide"); return; }
+    try { await store.saveWeight({ date, kg }); render(); toast("Poids enregistré"); } catch (err) { toast("Échec de l'enregistrement"); }
+    return;
+  }
+  if (ds.wdel) { if (!confirmTap(t, "?")) return; try { await store.deleteWeight(ds.wdel); render(); } catch (err) {} return; }
+
+  /* --- programme --- */
+  if (ds.pact) {
+    syncDraft(); const day = draft.days[+ds.di], i = +ds.i;
+    if (ds.pact === "rm") day.ex.splice(i, 1);
+    if (ds.pact === "up" && i > 0) [day.ex[i - 1], day.ex[i]] = [day.ex[i], day.ex[i - 1]];
+    if (ds.pact === "down" && i < day.ex.length - 1) [day.ex[i + 1], day.ex[i]] = [day.ex[i], day.ex[i + 1]];
+    render(); return;
+  }
+  if (ds.padd) {
+    syncDraft(); const day = draft.days[+ds.padd];
+    const muscles = day.ex.map(x => x.muscle);
+    openPicker({ title: `Ajouter à ${day.label}`, muscle: PRIORITY.find(m => muscles.includes(m)) || "pecs", exclude: day.ex.map(x => x.name),
+      onPick: (x) => { day.ex.push(fromLib(x, null, day.id)); render(); toast(`${x.n} ajouté`); } });
+    return;
+  }
+  if (ds.pname) {
+    syncDraft(); const [di, i] = ds.pname.split("|").map(Number); const day = draft.days[di]; const old = day.ex[i];
+    openPicker({ title: `Remplacer ${old.name}`, muscle: old.muscle, current: old.name, exclude: day.ex.map(x => x.name),
+      onPick: (x) => { day.ex[i] = fromLib(x, old, day.id); render(); toast(`${old.name} → ${x.n}`); } });
+    return;
+  }
+  if (t.id === "psave") { await saveDraft("Programme sauvegardé : tes séances sont à jour"); render(); return; }
+  if (t.id === "pcancel") { if (!draftDirty()) { toast("Rien à annuler"); return; } draft = null; render(); toast("Modifications annulées"); return; }
+  if (t.id === "preset") {
+    if (!confirmTap(t, "Appuie encore : ça remplace tes exercices")) return;
+    syncDraft();
+    draft.days = buildDays(planSplit(draft.days.map(dayWd)), draft.days);
+    render(); toast("Répartition conseillée chargée : sauvegarde pour l'appliquer"); return;
+  }
+
+  /* --- sauvegarde --- */
+  if (t.id === "exp") { exportData(); return; }
+  if (t.id === "imp") {
+    const txt = $("#imp-txt").value.trim(); if (!txt) { toast("Choisis un fichier ou colle une sauvegarde"); return; }
+    let data; try { data = JSON.parse(txt); } catch (err) { toast("Texte illisible : ce n'est pas une sauvegarde"); return; }
+    if (!Array.isArray(data?.sessions)) { toast("Ce fichier n'est pas une sauvegarde du carnet"); return; }
+    if (!confirmTap(t, `Importer ${data.sessions.length} séance${data.sessions.length > 1 ? "s" : ""} ? Appuie encore`)) return;
+    t.disabled = true;
+    try { const r = await importData(data); render(); toast(`Import terminé : ${r.s} séance${r.s > 1 ? "s" : ""}, ${r.w} pesée${r.w > 1 ? "s" : ""}${r.c ? ", programme" : ""}`); }
+    catch (err) { t.disabled = false; toast("Échec de l'import, réessaie"); }
+    return;
+  }
+});
+
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && picker) closePicker(); });
+document.addEventListener("change", async (e) => {
+  const t = e.target;
+  if (t.id === "imp-file" && t.files?.[0]) { try { $("#imp-txt").value = await t.files[0].text(); toast("Fichier chargé : appuie sur Importer"); } catch (err) { toast("Lecture du fichier impossible"); } return; }
+  if (t.id === "day-title") { const v = t.value.trim(); if (v) await changeDay(dayObj().id, (dd) => { if (dd.title === v) return false; dd.title = v; }, "Séance renommée"); return; }
+  if (t.id === "prop-comp" && proposal) { proposal.comp = t.value; return; }
+  if (t.dataset.propkey != null && proposal) { proposal.split[+t.dataset.propkey].key = t.value; render(); $("#proposal")?.scrollIntoView({ block: "center" }); return; }
+  if (tab === "programme") setTimeout(updateSaveBar, 0);
+  if (t.id === "date" && t.value) { await flushAutosave(); manualNav = true; curDate = t.value; render(); return; }
+  if (t.id === "progsel") { progEx = t.value; render(); return; }
+  if (t.id === "pl-bar") { calcTools(); return; }
+  if (t.dataset.swapday) {
+    const a = +t.dataset.swapday, b = t.value; if (b === "") return;
+    syncDraft();
+    const A = draft.days[a], B = draft.days[+b];
+    [A.title, B.title] = [B.title, A.title]; [A.ex, B.ex] = [B.ex, A.ex];
+    render(); toast(`${A.label} ⇄ ${B.label}`); return;
+  }
+  if (t.dataset.pmove) {
+    const [di, i] = t.dataset.pmove.split("|").map(Number), to = t.value; if (to === "") return;
+    syncDraft();
+    const ex = draft.days[di].ex.splice(i, 1)[0]; draft.days[+to].ex.push(ex);
+    render(); toast(`${ex.name || "Exercice"} → ${draft.days[+to].label}`); return;
+  }
+});
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.closest(".sets") || t.id === "note" || t.id === "duree") { typed[tkey(t.id)] = t.value; scheduleAutosave(); if (t.id !== "note") updateKcal(); }
+  if (["pl-total", "rm-kg", "rm-reps", "wu-kg"].includes(t.id)) calcTools();
+  if (tab === "programme" && t.closest("#view")) updateSaveBar();
+  if (t.id === "pk-q") { picker.q = t.value; if (t.value.trim() && picker.filterM) { picker.filterM = ""; $$("[data-pm]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pm === "")); } renderPickerList(); }
+});
+
+/* en revenant dans l'app après 20 min ou un changement de jour, on réaffiche la séance à faire */
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden) { hiddenAt = Date.now(); await flushAutosave(); return; }
+  const dayChanged = curDate !== today() && !manualNav;
+  if (dayChanged || (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000)) {
+    if (picker || drag || (tab === "programme" && draft)) return;
+    goToNext(); if (tab === "seance") render();
+  }
+});
+
+/* ================= démarrage ================= */
+render();
+store.init();
+</script>
+
+</body></html>
