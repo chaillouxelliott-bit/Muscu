@@ -299,6 +299,12 @@ details.more-in > div { display: grid; gap: 10px; }
 .wdchips.one { grid-column: auto; }
 .tab.add b { color: var(--accent); }
 .empty { text-align: center; padding: 22px 14px; }
+.wk { display: grid; gap: 6px; }
+.wkrow { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; background: var(--sunk); border-radius: 10px; padding: 6px 6px 6px 12px; font-weight: 600; }
+.wkrow select { font-size: 16px; padding: 10px; background: var(--bg); width: 100%; }
+.wkrow.on > span { color: var(--accent); }
+.wkrow:not(.on) select { color: var(--muted); }
+.savebar.saved .savestate { color: var(--up); }
 @media (max-width: 380px) { .bar { grid-template-columns: 88px 1fr 48px; } .tile b { font-size: 26px; } }
 @media (prefers-reduced-motion: no-preference) { .tab, .primary, .fill { transition: background .15s, color .15s, width .3s; } }
 </style>
@@ -504,6 +510,7 @@ let addingDay = false;     // onglet « + » du Programme
 let toolsOpen = null;      // exercice dont le panneau échauffement/disques est ouvert
 let mesK = "bras";         // mensuration affichée
 let settingsOpen = false;
+let undoRm = null;          // dernière séance retirée de la semaine (pour annuler)
 
 const prog = () => cfg.programs[cfg.active] || cfg.programs.B;
 /* une séance compte comme faite si tu l'as terminée, ou si elle a des séries et date d'avant aujourd'hui */
@@ -753,8 +760,6 @@ function composeHtml(d) {
   const others = prog().days.filter(x => x.id !== d.id);
   return `<section class="compose" id="compose">
     <input class="titlein" id="day-title" value="${esc(d.title)}" aria-label="Nom de la séance">
-    <div class="daymeta"><span class="label">Jour de la semaine</span>
-      <div class="wdchips one">${WD_ORDER.map(w => `<button class="wdc" data-setwd="${d.id}|${w}" aria-pressed="${dayWd(d) === w}" aria-label="${WD_LABELS[w]}">${WD_LABELS[w].slice(0, 2)}</button>`).join("")}</div></div>
     <p class="hint">Touche un exercice pour le changer · glisse ⠿ pour l'ordre, ou sur un jour en haut pour l'y déplacer.</p>
     ${d.ex.map((ex, i) => `<div class="crow" data-idx="${i}" data-ex="${ex.id}">
       <button class="handle" aria-label="Glisser ${esc(ex.name)}">⠿</button>
@@ -768,7 +773,6 @@ function composeHtml(d) {
     </div>`).join("")}
     <button class="addbig" id="addex-day">+ Ajouter un exercice</button>
     ${suggestFor(d).length ? `<div class="quick"><span class="hint">Ajout rapide :</span>${suggestFor(d).map(x => `<button class="chip" data-quickadd="${LIBRARY.indexOf(x)}">+ ${esc(x.n)}</button>`).join("")}</div>` : ""}
-    <button class="mini rm" data-rmday="${d.id}" style="align-self:flex-start" ${prog().days.length <= 1 ? "disabled" : ""}>Retirer cette séance du programme</button>
   </section>`;
 }
 
@@ -1177,16 +1181,29 @@ function calcTools() {
 /* ---------- Programme : un seul éditeur, enregistré tout de suite ---------- */
 const progDay = () => prog().days.find(d => d.id === progDayId) || byNext(prog().days)[0] || prog().days[0];
 const editDayId = () => (tab === "programme" ? progDay() : dayObj())?.id;
+function weekHtml() {
+  const days = prog().days;
+  return `<section class="card">
+    <div class="top"><h3>Ma semaine</h3><span class="pill" style="margin:0">${days.length} séance${days.length > 1 ? "s" : ""}</span></div>
+    <div class="wk">${WD_ORDER.map(w => { const d = days.find(x => dayWd(x) === w);
+      return `<label class="wkrow ${d ? "on" : ""}"><span>${WD_LABELS[w]}</span><select data-wkday="${w}" aria-label="Séance du ${WD_LABELS[w].toLowerCase()}">
+        <option value="" ${d ? "" : "selected"}>Repos</option>
+        ${days.map(x => `<option value="${x.id}" ${x === d ? "selected" : ""}>${esc(x.title)}${x !== d && dayWd(x) != null ? ` · ${WD_LABELS[dayWd(x)].toLowerCase()}` : ""}</option>`).join("")}
+        <option value="__new">＋ Nouvelle séance</option>
+      </select></label>`; }).join("")}</div>
+    <p class="hint">Choisis la séance de chaque jour. Si le jour est déjà pris, les deux séances échangent leur place.</p>
+    ${undoRm ? `<button class="mini" id="undo-rm" style="align-self:flex-start">↺ Remettre ${esc(undoRm.title)} le ${esc(undoRm.label.toLowerCase())}</button>` : ""}
+  </section>`;
+}
 function viewProgramme() {
-  const p = prog(); const d = progDay();
-  const free = WD_ORDER.filter(w => !p.days.some(x => dayWd(x) === w));
+  const d = progDay();
   const days = cycleOrder();
-  return `<nav class="tabs" style="--n:${days.length + (free.length ? 1 : 0)}" role="tablist">${days.map(x => `<button class="tab" role="tab" aria-selected="${!addingDay && d?.id === x.id}" data-pday="${x.id}"><b>${esc(days.length > 4 ? x.label.slice(0, 3) : x.label)}</b><span>${esc(x.title)}</span></button>`).join("")}${free.length ? `<button class="tab add" role="tab" aria-selected="${addingDay}" data-paddtab="1"><b>＋</b><span>Ajouter</span></button>` : ""}</nav>
+  return `${weekHtml()}
   ${proposal ? proposalHtml() : ""}
-  ${addingDay && !proposal ? `<section class="card"><h3>Ajouter une séance</h3><p class="sub">Choisis le jour, je te propose les exercices qui complètent le mieux ta semaine.</p><div class="quick">${free.map(w => `<button class="chip" data-addday="${w}">${WD_LABELS[w]}</button>`).join("")}</div></section>` : ""}
-  ${!addingDay && !proposal && d ? composeHtml(d) : ""}
-  ${!proposal ? `<button class="ghost" id="recalc">✨ Me proposer un programme complet (${p.days.length} séance${p.days.length > 1 ? "s" : ""})</button>` : ""}
-  <p class="hint">Chaque changement est enregistré tout de suite. Tes perfs passées restent liées à chaque exercice.</p>`;
+  ${!proposal && d ? `<nav class="tabs" style="--n:${days.length}" role="tablist">${days.map(x => `<button class="tab" role="tab" aria-selected="${d.id === x.id}" data-pday="${x.id}"><b>${esc(days.length > 3 ? x.label.slice(0, 3) : x.label)}</b><span>${esc(x.title)}</span></button>`).join("")}</nav>
+  ${composeHtml(d)}` : ""}
+  ${!proposal ? `<button class="ghost" id="recalc">✨ Me proposer un programme complet (${prog().days.length} séance${prog().days.length > 1 ? "s" : ""})</button>` : ""}
+  <div class="savebar" id="savebar"><span class="savestate" id="savestate">Enregistré automatiquement</span><button class="primary" id="psave">💾 Sauvegarder</button></div>`;
 }
 
 /* ================= choix d'exercice ================= */
@@ -1665,6 +1682,20 @@ document.addEventListener("click", async (e) => {
   if (ds.tab || ds.day || ds.cal || ds.open || (ds.date && t.closest("thead"))) await flushAutosave();
 
   /* --- calendrier --- */
+  if (t.id === "psave") {
+    t.disabled = true;
+    const ae = document.activeElement; if (ae?.id === "day-title") ae.blur();
+    await persistCfg(); t.disabled = false;
+    const st = $("#savestate"), bar = $("#savebar");
+    if (st) { st.textContent = `✓ Sauvegardé à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; bar.classList.add("saved"); }
+    toast("Programme sauvegardé ✓"); return;
+  }
+  if (t.id === "undo-rm" && undoRm) {
+    const d = undoRm; const days = prog().days;
+    if (days.some(x => dayWd(x) === dayWd(d))) { toast(`Le ${d.label.toLowerCase()} est déjà pris : libère-le d'abord`); return; }
+    days.push(d); sortDays(days); undoRm = null; progDayId = d.id; proposal = null;
+    render(); await persistCfg(`${d.title} remise le ${d.label.toLowerCase()}`); return;
+  }
   if (ds.setwd) {
     const [id, w] = ds.setwd.split("|"); const wd = +w;
     const days = prog().days; const day = days.find(x => x.id === id); if (!day || dayWd(day) === wd) return;
@@ -1866,6 +1897,23 @@ document.addEventListener("change", async (e) => {
   const t = e.target;
   if (t.id === "imp-file" && t.files?.[0]) { try { $("#imp-txt").value = await t.files[0].text(); toast("Fichier chargé : appuie sur Importer"); } catch (err) { toast("Lecture du fichier impossible"); } return; }
   if (t.id === "day-title") { const v = t.value.trim(); if (v) await changeDay(editDayId(), (dd) => { if (dd.title === v) return false; dd.title = v; }, "Séance renommée"); return; }
+  if (t.dataset.wkday != null) {
+    const wd = +t.dataset.wkday, v = t.value; const days = prog().days; const cur = days.find(x => dayWd(x) === wd);
+    if (v === "__new") {
+      proposal = { kind: "add", wd, split: planSplit(days.map(dayWd).concat([wd])), comp: complementFor(days, wd) };
+      render(); $("#proposal")?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
+    }
+    if (v === "") {
+      if (!cur) return;
+      if (days.length <= 1) { toast("Garde au moins une séance"); render(); return; }
+      undoRm = clone(cur); days.splice(days.indexOf(cur), 1); proposal = null;
+      render(); await persistCfg(`${cur.title} retirée (historique conservé)`); return;
+    }
+    const day = days.find(x => x.id === v); if (!day || dayWd(day) === wd) return;
+    if (cur) cur.label = day.label;
+    day.label = WD_LABELS[wd]; sortDays(days); proposal = null; progDayId = day.id;
+    render(); await persistCfg(cur ? `${day.title} ⇄ ${cur.title}` : `${day.title} → ${WD_LABELS[wd].toLowerCase()}`); return;
+  }
   if (t.id === "prop-comp" && proposal) { proposal.comp = t.value; return; }
   if (t.dataset.propkey != null && proposal) { proposal.split[+t.dataset.propkey].key = t.value; render(); $("#proposal")?.scrollIntoView({ block: "center" }); return; }
   if (t.id === "date" && t.value) { await flushAutosave(); manualNav = true; curDate = t.value; render(); return; }
@@ -1892,7 +1940,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
-const APP_VERSION = "2026-11-22.5";
+const APP_VERSION = "2026-11-22.6";
 let updChecking = false;
 async function checkUpdate() {
   if (!/github\.io$/.test(location.hostname) || updChecking) return;
