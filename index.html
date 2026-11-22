@@ -1883,6 +1883,7 @@ document.addEventListener("input", (e) => {
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) { hiddenAt = Date.now(); await flushAutosave(); return; }
+  checkUpdate();
   const dayChanged = curDate !== today() && !manualNav;
   if (dayChanged || (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000)) {
     if (picker || drag || tab === "programme") return;
@@ -1890,9 +1891,27 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
+/* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
+const APP_VERSION = "2026-11-22.3";
+let updChecking = false;
+async function checkUpdate() {
+  if (!/github\.io$/.test(location.hostname) || updChecking) return;
+  updChecking = true;
+  try {
+    const r = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" });
+    const m = (await r.text()).match(/const APP_VERSION = "([^"]+)"/);
+    if (!m || m[1] === APP_VERSION) return;
+    const go = async () => { await flushAutosave(); location.replace(location.pathname + "?v=" + encodeURIComponent(m[1])); };
+    if (!hasTyped() && !picker && !drag && !settingsOpen) { go(); return; }   // rien en cours : on recharge tout de suite
+    let b = $("#upd");
+    if (!b) { b = document.createElement("button"); b.id = "upd"; b.className = "toast"; b.style.border = "0"; b.textContent = "Nouvelle version · touche pour mettre à jour"; document.body.appendChild(b); b.onclick = go; }
+  } catch (e) {} finally { updChecking = false; }
+}
+
 /* ================= démarrage ================= */
 render();
 store.init();
+checkUpdate();
 </script>
 
 </body></html>
