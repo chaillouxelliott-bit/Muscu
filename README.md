@@ -1,6 +1,12 @@
 # Carnet muscu
 
-Appli web mobile pour suivre mes séances de musculation : programme par jour, saisie des séries (poids × reps), repos optimal par exercice, historique des charges, calendrier d'assiduité, courbes de progression, poids de corps, IMC et calories, outils (disques, 1RM, échauffement).
+Appli web mobile pour suivre mes séances de musculation, en 3 onglets :
+
+- **Séance** : saisie des séries en un geste (✓ reprend la dernière perf), minuteur de repos, charge proposée, échauffement et disques, records 🏆, bilan et partage en fin de séance.
+- **Historique** : calendrier d'assiduité, objectif été (pecs et bras), derniers records, courbes de force, poids de corps et mensurations.
+- **Programme** : un seul éditeur par jour, enregistré automatiquement, avec répartition conseillée.
+
+Le bouton ⚙️ regroupe le profil (IMC, calories), les calculs (1RM, disques, échauffement) et la sauvegarde.
 
 ## Utilisation
 
@@ -10,4 +16,4 @@ Sur téléphone : menu du navigateur → « Ajouter à l'écran d'accueil » pou
 ## Données
 
 Tout est enregistré dans le navigateur de l'appareil (localStorage), rien n'est envoyé sur Internet.
-Pour changer d'appareil : onglet **Outils → Exporter mes données**, puis **Importer** sur le nouvel appareil.
+Pour changer d'appareil : **⚙️ Réglages → Sauvegarde de secours → Exporter mes données**, puis **Importer** sur le nouvel appareil.
