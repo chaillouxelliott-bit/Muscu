@@ -56,9 +56,11 @@ input, select, textarea { font: inherit; color: var(--fg); background: var(--bg)
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; box-shadow: 0 0 0 6px var(--bg); display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); gap: 5px; background: var(--sunk); padding: 5px; border-radius: 12px; }
 .tab { border: 0; background: transparent; color: var(--muted); padding: 9px 2px 7px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
-.tab b { font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+.tab b { font-family: var(--display); font-size: 18px; text-transform: uppercase; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab span { font-size: 11px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
-.tab[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: var(--glow); }
+.tab.today { background: var(--accent); color: #fff; box-shadow: var(--glow); }
+.tab[aria-selected="true"]:not(.today) { background: var(--surface); color: var(--fg); box-shadow: 0 0 0 2px var(--accent) inset; }
+.tab.today.restday span { color: #fff; opacity: .9; }
 .tab.droptarget { outline: 2px dashed var(--accent); outline-offset: 2px; color: var(--fg); }
 
 .dayhead { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -168,9 +170,9 @@ td .s.top { font-weight: 600; }
 .st.done { background: var(--up-bg); color: var(--up); }
 .st.prog { background: var(--sunk); color: var(--fg); }
 .st.next { background: var(--accent-soft); color: var(--accent); }
-.tab.next:not([aria-selected="true"]) { outline: 1.5px solid var(--accent); outline-offset: -1.5px; color: var(--fg); }
+.tab.next:not([aria-selected="true"]):not(.today) { color: var(--fg); }
 .tab.next span { color: var(--accent); font-weight: 700; }
-.tab.next[aria-selected="true"] span { color: #fff; }
+.tab.next.today span { color: #fff; }
 .kcalrow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: end; }
 .kcalrow input { font-size: 17px; text-transform: none; letter-spacing: 0; }
 .kcalout { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; line-height: 1.35; }
@@ -332,6 +334,15 @@ input, select, textarea { font-size: 16px !important; }   /* évite le zoom auto
 .seg button { min-height: 40px; }
 button:active { transform: scale(.97); }
 body.kb .nav { display: none; }
+.habit { gap: 6px; display: flex; flex-direction: column; }
+.habit .primary, .habit .ghost { width: 100%; }
+.stag { background: var(--sunk); border: 1px solid var(--warn); border-radius: 12px; padding: 10px 12px; margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.stag.light { border-color: var(--line); color: var(--muted); font-size: 13px; }
+.stag-t { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.stag-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.stag-acts .chip { white-space: normal; text-align: left; flex-shrink: 1; }
+.bkban { border-color: var(--accent); display: flex; flex-direction: column; gap: 6px; }
+.bk-acts { display: flex; gap: 8px; flex-wrap: wrap; } .bk-acts .primary { flex: 1 1 auto; }
 @media (max-width: 359px) { header.top h1 { font-size: 26px; } header.top { flex-wrap: nowrap; } }   /* clavier ouvert : la barre du bas laisse la place */
 @media (prefers-reduced-motion: reduce) { button:active { transform: none; } }
 </style>
@@ -755,10 +766,19 @@ function render() {
 
 /* ---------- Séance ---------- */
 function dayTabs() {
+  /* aujourd'hui en premier (en rouge, même un jour de repos), puis les 3 prochaines séances */
   const p = prog();
-  const next = nextToDo(), cur = curDayId(), since = addDays(today(), -6);
-  return `<nav class="tabs" style="--n:${p.days.length}" role="tablist">${byNext(p.days).map(d => { const nx = d.id === next && curDate === today(); const dn = sessions.some(s => s.day === d.id && isDone(s) && s.date >= since);
-    return `<button class="tab ${nx ? "next" : ""}" role="tab" aria-selected="${d.id === cur}" data-day="${d.id}"><b>${esc(p.days.length > 4 ? d.label.slice(0, 3) : d.label)}${dn ? " ✓" : ""}</b><span>${nx ? "▶ À faire" : esc(d.title)}</span></button>`; }).join("")}</nav>`;
+  const next = nextToDo(), cur = curDayId(), since = addDays(today(), -6), twd = new Date().getDay();
+  const todayDay = p.days.find(d => dayWd(d) === twd) || null;
+  let list = byNext(p.days).filter(d => d !== todayDay).slice(0, 3);
+  const curD = p.days.find(d => d.id === cur);
+  if (curD && curD !== todayDay && !list.includes(curD)) list.push(curD);   // la séance ouverte reste toujours visible
+  const short = list.length + 1 >= 4; const lbl = (d) => esc(short ? d.label.slice(0, 3) : d.label);
+  const tabFor = (d, isToday) => { const nx = d.id === next && curDate === today(); const dn = sessions.some(s => s.day === d.id && isDone(s) && s.date >= since);
+    return `<button class="tab ${isToday ? "today" : ""} ${nx ? "next" : ""}" role="tab" aria-selected="${d.id === cur}" data-day="${d.id}"><b>${lbl(d)}${dn ? " ✓" : ""}</b><span>${nx ? "▶ À faire" : isToday ? "Aujourd'hui" : esc(d.title)}</span></button>`; };
+  const first = todayDay ? tabFor(todayDay, true)
+    : `<button class="tab today restday" role="tab" aria-selected="false" data-rest="1"><b>${esc(short ? WD_LABELS[twd].slice(0, 3) : WD_LABELS[twd])}</b><span>Repos 😴</span></button>`;
+  return `<nav class="tabs" style="--n:${list.length + 1}" role="tablist">${first}${list.map(d => tabFor(d, false)).join("")}</nav>`;
 }
 const setLine = (sets) => filled(sets).map(x => `${fmtNum(x.kg) || "–"}×${x.reps ?? "–"}`).join(" · ");
 
@@ -827,6 +847,29 @@ function seanceStatus(d, existing) {
   return `<span class="st next">Prochaine</span> ${r === 1 ? "demain" : d.label.toLowerCase()}`;
 }
 
+/* ---------- stagnation : 3 séances de suite sans battre sa meilleure perf ---------- */
+function stagnation(ex, date) {
+  if (ex.orig) return null;                       // pas pour un échange du jour
+  const n = norm(ex.name), hist = [];
+  for (const s of sessionsDesc()) {
+    if (s.date >= date) continue;
+    const k = Object.keys(s.sets || {}).find(k => norm(exName(s, k)) === n && filled(s.sets[k]).length);
+    if (k) hist.push({ date: s.date, best: bestOf(s.sets[k]) });
+    if (hist.length === 3) break;
+  }
+  if (hist.length < 3 || hist.some(h => !h.best)) return null;
+  const before = bestBefore(ex.name, hist[2].date);  // record avant ces 3 séances
+  if (!before || before.bw !== hist[0].best.bw) return null;
+  if (hist.some(h => h.best.score > before.score + 1e-6)) return null;
+  if (stagOk[n] === hist[0].date) return null;       // déjà masquée pour cette séance-là
+  return { since: hist[2].date, last: hist[0].date };
+}
+let stagOk = {};  try { stagOk = JSON.parse(localStorage.getItem("carnet-stagnation") || "{}") || {}; } catch (e) {}
+let lightDays = {}; try { lightDays = JSON.parse(localStorage.getItem("carnet-leger") || "{}") || {}; } catch (e) {}
+function saveLight() { const lim = addDays(today(), -14); Object.keys(lightDays).forEach(k => { if (k.slice(0, 10) < lim) delete lightDays[k]; }); try { localStorage.setItem("carnet-leger", JSON.stringify(lightDays)); } catch (e) {} }
+const isLight = (date, exId) => !!lightDays[`${date}|${exId}`];
+const nextRange = (r) => (lowRep(r) <= 8 ? "10-15" : "6-10");
+
 /* ---------- records ---------- */
 /* meilleure série d'une liste : 1RM estimé, ou reps max pour le poids du corps */
 function bestOf(f) {
@@ -882,8 +925,13 @@ function viewSeance() {
     <div><h2>${esc(d.title)}</h2><p class="sub">${seanceStatus(d, existing)}</p></div>
     <div class="datebox"><label class="label" for="date">Date</label><input type="date" id="date" value="${curDate}"></div>
   </div>`;
-  if (!d.ex.length) return `${head}<div class="card empty"><p class="sub">Pas encore d'exercice dans cette séance.</p><button class="primary" id="edit-day">✎ Ajouter des exercices</button></div>`;
-  return `${head}
+  const usual = !existing && !hasTyped() && effEx(d, curDate).some(ex => lastFor(ex, curDate));
+  const lastAny = usual ? effEx(d, curDate).map(ex => lastFor(ex, curDate)?.date).filter(Boolean).sort().pop() : null;
+  const habit = usual ? `<section class="card habit"><button class="${curDate < today() ? "primary" : "ghost"}" id="as-usual">⚡ Fait comme d'habitude</button>
+    <p class="hint">${curDate < today() ? "Séance oubliée ? " : ""}Recopie tes charges et reps de la dernière fois (${fmtDate(lastAny)}) et termine la séance en un appui.</p></section>` : "";
+  if (!d.ex.length) return `${backupBanner()}${head}<div class="card empty"><p class="sub">Pas encore d'exercice dans cette séance.</p><button class="primary" id="edit-day">✎ Ajouter des exercices</button></div>`;
+  return `${backupBanner()}${head}
+  ${habit}
   ${effEx(d, curDate).map((ex) => {
     const cur = existing?.sets?.[ex.id] || [];
     const last = lastFor(ex, curDate);
@@ -899,8 +947,9 @@ function viewSeance() {
       const key = `${curDate}|${d.id}|${ex.id}|${i}`;
       const kid = `kg-${ex.id}-${i}`, rid = `rp-${ex.id}-${i}`;
       const kgV = val(kid, c.kg != null ? fmtNum(c.kg) : ""), rpV = val(rid, c.reps != null ? c.reps : "");
-      const phKg = l.kg != null ? fmtNum(up && l.kg > 0 ? l.kg + step : l.kg) : "kg";
-      const phRp = l.reps != null ? (up ? lowRep(ex.reps) : l.reps) : "reps";
+      const light = isLight(curDate, ex.id);
+      const phKg = l.kg != null ? fmtNum(light && l.kg > 0 ? Math.max(0, Math.round(l.kg * 0.9 / step) * step) : (up && l.kg > 0 ? l.kg + step : l.kg)) : "kg";
+      const phRp = l.reps != null ? (up && !light ? lowRep(ex.reps) : l.reps) : "reps";
       const on = doneSets.has(key) || (!(kid in typed) && (c.kg != null || c.reps != null));
       const pr = on && isPR(bestOf([{ kg: parseNum(kgV), reps: parseNum(rpV) }]), prev);
       return `<span class="n">${i + 1}</span>
@@ -921,7 +970,12 @@ function viewSeance() {
           ${ex.orig ? `<div class="tmpnote">Échange du jour · remplace ${esc(ex.origName)} <button class="mini" data-unswap="${ex.orig}">↺ Remettre</button></div>` : ""}</div>
         <div class="ex-meta"><span class="target">${ex.sets} × ${esc(ex.reps)}</span><span class="rest">Repos <b>${fmtRest(optimalRest(ex))}</b></span></div>
       </div>
-      <div class="last">${last ? `Dernière fois (${fmtDate(last.date)}) : ${setLine(ls)}` : "Première fois : note ta charge"}${up ? `<span class="pill">↑ +${fmtNum(step)} kg proposé</span>` : ""}${prev && !prev.bw ? ` · 🏆 ${fmtNum(prev.kg)}×${prev.reps}` : ""}</div>
+      ${(() => { if (existing?.done) return ""; const st = stagnation(ex, curDate); if (!st) return "";
+        if (isLight(curDate, ex.id)) return `<div class="stag light">🪶 Séance légère : charges à −10 % proposées. Reprends ta charge normale la prochaine fois.</div>`;
+        return `<div class="stag"><div class="stag-t"><b>📉 Pas de progrès depuis 3 séances</b><button class="mini" data-stag="ok|${ex.id}" aria-label="Masquer cette alerte">✕</button></div>
+          <p class="hint">Depuis le ${fmtDate(st.since)}, tu ne bats pas ton record. Choisis une solution :</p>
+          <div class="stag-acts"><button class="chip" data-stag="reps|${ex.id}">🔁 Passer en ${nextRange(ex.reps)} reps</button><button class="chip" data-stag="light|${ex.id}">🪶 Séance légère (−10 %)</button><button class="chip" data-pickreplace="${ex.id}">⇄ Remplacer l'exercice</button></div></div>`; })()}
+      <div class="last">${last ? `Dernière fois (${fmtDate(last.date)}) : ${setLine(ls)}` : "Première fois : note ta charge"}${up && !isLight(curDate, ex.id) ? `<span class="pill">↑ +${fmtNum(step)} kg proposé</span>` : ""}${prev && !prev.bw ? ` · 🏆 ${fmtNum(prev.kg)}×${prev.reps}` : ""}</div>
       <div class="sets"><span></span><span class="h">Poids (kg)</span><span class="h">Reps</span><span></span>${rows}</div>
       ${lib?.c || isBar ? `<div><button class="extools" data-tools="${ex.id}" aria-expanded="${toolsOpen === ex.id}">🏋️ ${isBar ? "Échauffement · disques" : "Échauffement"}</button></div>` : ""}
       ${panel}
@@ -1189,6 +1243,9 @@ function renderSettings() {
     </div></details>
     <details class="more-in backup" id="sd-bk"><summary>Sauvegarde de secours</summary><div>
       <p class="sub">Tes données sont déjà enregistrées automatiquement. Ce fichier sert seulement à changer d'appareil ou de version de l'appli.</p>
+      ${store.mode === "db" ? "" : `<label class="field" for="bk-mail">Adresse mail pour recevoir tes sauvegardes<input type="email" id="bk-mail" inputmode="email" autocomplete="email" placeholder="toi@exemple.fr" value="${esc(bkGet("carnet-bk-mail"))}" style="text-transform:none;letter-spacing:0"></label>
+      <button class="primary" id="bk-send">📧 M'envoyer la sauvegarde</button>
+      <p class="hint">${bkGet("carnet-bk-last") ? `Dernière sauvegarde : ${fmtDate(bkGet("carnet-bk-last"))}. ` : ""}Rappel automatique tous les ${BK_DAYS} jours.</p>`}
       <button class="ghost" id="exp">⬇ Exporter mes données</button>
       <textarea id="exp-out" readonly hidden aria-label="Données exportées"></textarea>
       <p class="hint" id="exp-hint" hidden>Si le fichier ne s'est pas téléchargé, copie ce texte et garde-le dans tes notes.</p>
@@ -1687,10 +1744,49 @@ document.addEventListener("pointerup", endDrag);
 document.addEventListener("pointercancel", endDrag);
 
 /* ================= export / import ================= */
+/* rappel de sauvegarde : version GitHub seulement (dans Claude, les données sont déjà en ligne) */
+const BK_DAYS = 7;
+function bkGet(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+function bkSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function backupBanner() {
+  if (store.mode === "db" || !sessions.length) return "";
+  const last = bkGet("carnet-bk-last"), snooze = bkGet("carnet-bk-snooze");
+  if (snooze && snooze > today()) return "";
+  const days = last ? Math.floor((new Date(today() + "T12:00:00") - new Date(last + "T12:00:00")) / 864e5) : null;
+  if (days != null && days < BK_DAYS) return "";
+  return `<section class="card bkban"><b>💾 ${days == null ? "Tu n'as jamais sauvegardé tes séances" : `Dernière sauvegarde il y a ${days} jours`}</b>
+    <p class="hint">Tes séances sont seulement dans ce téléphone. Une sauvegarde évite de tout perdre si le navigateur vide ses données.</p>
+    <div class="bk-acts"><button class="primary" id="bk-now">${bkGet("carnet-bk-mail") ? "📧 M'envoyer la sauvegarde" : "💾 Sauvegarder"}</button><button class="ghost" id="bk-later">Plus tard</button></div></section>`;
+}
+function backupFile() {
+  const json = JSON.stringify({ app: "carnet-muscu", version: 1, exportedAt: new Date().toISOString(), sessions, weights, profil, cfg });
+  return { json, name: `carnet-muscu-${today()}.json` };
+}
+/* envoie le fichier : feuille de partage du téléphone (Mail, Fichiers…), sinon téléchargement + mail */
+async function sendBackup() {
+  const { json, name } = backupFile(); const mail = bkGet("carnet-bk-mail");
+  let file = null; try { file = new File([json], name, { type: "application/json" }); } catch (e) {}
+  if (file && navigator.canShare?.({ files: [file] })) {
+    if (mail) { try { await navigator.clipboard?.writeText(mail); } catch (e) {} }
+    try {
+      await navigator.share({ files: [file], title: "Sauvegarde Carnet muscu", text: mail ? `Sauvegarde du ${fmtDate(today())} — à envoyer à ${mail}` : `Sauvegarde du ${fmtDate(today())}` });
+      bkSet("carnet-bk-last", today()); toast(mail ? "Envoyé ✓ (ton adresse était copiée : colle-la dans « À »)" : "Sauvegarde enregistrée ✓"); render(); return;
+    } catch (e) { if (e?.name === "AbortError") { toast("Sauvegarde annulée"); return; } }
+  }
+  try {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch (e) {}
+  bkSet("carnet-bk-last", today());
+  if (mail) { location.href = `mailto:${encodeURIComponent(mail)}?subject=${encodeURIComponent("Sauvegarde Carnet muscu " + fmtDate(today()))}&body=${encodeURIComponent("Joins le fichier " + name + " qui vient d'être téléchargé.")}`; }
+  toast(mail ? "Fichier téléchargé : joins-le au mail qui s'ouvre" : "Sauvegarde téléchargée ✓"); render();
+}
+
 async function exportData() {
   const data = { app: "carnet-muscu", version: 1, exportedAt: new Date().toISOString(), sessions, weights, profil, cfg };
   const json = JSON.stringify(data);
   const out = $("#exp-out"); if (out) { out.value = json; out.hidden = false; $("#exp-hint").hidden = false; }
+  bkSet("carnet-bk-last", today());
   const filename = `carnet-muscu-${today()}.json`;
   /* dans Claude : téléchargement via la plateforme ; ailleurs (GitHub) : lien classique */
   let dl = null; try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
@@ -1888,6 +1984,29 @@ document.addEventListener("click", async (e) => {
     return;
   }
   if (ds.tools) { toolsOpen = toolsOpen === ds.tools ? null : ds.tools; render(); return; }
+  if (ds.rest) { const nd = prog().days.find(d => d.id === nextToDo()); toast(nd ? `Jour de repos 😴 Prochaine séance : ${nd.title} (${nd.label.toLowerCase()})` : "Jour de repos 😴"); return; }
+  if (t.id === "as-usual") {
+    if (!confirmTap(t, "Appuie encore pour confirmer")) return;
+    const dd = dayObj(); let n = 0;
+    effEx(dd, curDate).forEach(ex => {
+      const l = lastFor(ex, curDate); if (!l) return;
+      for (let i = 0; i < ex.sets; i++) {
+        const x = l.sets[i]; if (!x || (x.kg == null && x.reps == null)) continue;
+        const kg = $(`#kg-${ex.id}-${i}`), rp = $(`#rp-${ex.id}-${i}`); if (!kg || !rp) continue;
+        kg.value = x.kg != null ? fmtNum(x.kg) : ""; rp.value = x.reps ?? "";
+        typed[tkey(kg.id)] = kg.value; typed[tkey(rp.id)] = rp.value; doneSets.add(`${curDate}|${dd.id}|${ex.id}|${i}`); n++;
+      }
+    });
+    if (!n) { toast("Rien à recopier : pas encore d'historique pour ces exercices"); return; }
+    await finishSession(null); return;
+  }
+  if (ds.stag) {
+    const [kind, exId] = ds.stag.split("|"); const dd = dayObj(); const ex = effEx(dd, curDate).find(x => x.id === exId); if (!ex) return;
+    if (kind === "ok") { const st = stagnation(ex, curDate); if (st) { stagOk[norm(ex.name)] = st.last; try { localStorage.setItem("carnet-stagnation", JSON.stringify(stagOk)); } catch (e) {} } render(); return; }
+    if (kind === "light") { lightDays[`${curDate}|${ex.id}`] = 1; saveLight(); render(); toast(`${ex.name} : charges à −10 % pour cette séance`); return; }
+    if (kind === "reps") { const r = nextRange(ex.reps); await changeDay(dd.id, (x) => { const e = x.ex.find(e => e.id === ex.id); if (!e) return false; e.reps = r; }, `${ex.name} : passe en ${r} reps`); return; }
+    return;
+  }
   if (t.id === "edit-day") { await flushAutosave(); progDayId = dayObj()?.id; addingDay = false; proposal = null; moreOpen = null; tab = "programme"; render(); window.scrollTo({ top: 0 }); return; }
   if (t.id === "share-cur") { shareSession(sessions.find(s => s.day === dayObj()?.id && s.date === curDate)); return; }
   if (ds.more) { moreOpen = moreOpen === ds.more ? null : ds.more; render(); return; }
@@ -1980,6 +2099,11 @@ document.addEventListener("click", async (e) => {
   if (ds.wdel) { if (!confirmTap(t, "?")) return; try { await store.deleteWeight(ds.wdel); render(); } catch (err) {} return; }
 
   /* --- sauvegarde --- */
+  if (t.id === "bk-now" || t.id === "bk-send") {
+    const inp = $("#bk-mail"); if (inp) { const v = inp.value.trim(); if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { inp.focus(); toast("Adresse mail invalide"); return; } bkSet("carnet-bk-mail", v); }
+    await sendBackup(); if (settingsOpen) renderSettings(); return;
+  }
+  if (t.id === "bk-later") { bkSet("carnet-bk-snooze", addDays(today(), 1)); render(); toast("Je te le rappelle demain"); return; }
   if (t.id === "exp") { exportData(); return; }
   if (t.id === "imp") {
     const txt = $("#imp-txt").value.trim(); if (!txt) { toast("Choisis un fichier ou colle une sauvegarde"); return; }
@@ -2135,7 +2259,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
-const APP_VERSION = "2026-11-25.4";
+const APP_VERSION = "2026-11-25.5";
 let updChecking = false;
 async function checkUpdate() {
   if (!/github\.io$/.test(location.hostname) || updChecking) return;
