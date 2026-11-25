@@ -1192,12 +1192,17 @@ function weekHtml() {
   return `<section class="card">
     <div class="top"><h3>Ma semaine</h3><span class="pill" style="margin:0">${days.length} séance${days.length > 1 ? "s" : ""}</span></div>
     <div class="wk">${WD_ORDER.map(w => { const d = days.find(x => dayWd(x) === w);
+      const others = days.filter(x => x !== d);
       return `<label class="wkrow ${d ? "on" : ""}"><span>${WD_LABELS[w]}</span><select data-wkday="${w}" aria-label="Séance du ${WD_LABELS[w].toLowerCase()}">
         <option value="" ${d ? "" : "selected"}>Repos</option>
-        ${days.map(x => `<option value="${x.id}" ${x === d ? "selected" : ""}>${esc(x.title)}${x !== d && dayWd(x) != null ? ` · ${WD_LABELS[dayWd(x)].toLowerCase()}` : ""}</option>`).join("")}
-        <option value="__new">＋ Nouvelle séance</option>
+        ${d ? `<option value="${d.id}" selected>${esc(d.title)}</option>` : ""}
+        <optgroup label="＋ Ajouter une séance">${Object.keys(TEMPLATES).map(k => `<option value="__tpl:${k}">${esc(TEMPLATES[k].title)}</option>`).join("")}
+          <option value="__empty">Séance vide (je choisis les exercices)</option>
+          <option value="__new">✨ Laisser l'app me conseiller</option></optgroup>
+        ${days.length ? `<optgroup label="⧉ Refaire une de mes séances (copie)">${days.map(x => `<option value="__copy:${x.id}">${esc(x.title)}${dayWd(x) != null ? ` · comme le ${WD_LABELS[dayWd(x)].toLowerCase()}` : ""}</option>`).join("")}</optgroup>` : ""}
+        ${others.length ? `<optgroup label="⇄ Déplacer ici (échange les jours)">${others.map(x => `<option value="${x.id}">${esc(x.title)}${dayWd(x) != null ? ` · ${WD_LABELS[dayWd(x)].toLowerCase()}` : ""}</option>`).join("")}</optgroup>` : ""}
       </select></label>`; }).join("")}</div>
-    <p class="hint">Choisis la séance de chaque jour. Si le jour est déjà pris, les deux séances échangent leur place.</p>
+    <p class="hint">Pour chaque jour : ajoute une séance, refais une séance que tu as déjà (elle est copiée, tu peux donc faire la même plusieurs fois par semaine) ou déplace-en une (les deux jours échangent).</p>
     ${undoRm ? `<button class="mini" id="undo-rm" style="align-self:flex-start">↺ Remettre ${esc(undoRm.title)} le ${esc(undoRm.label.toLowerCase())}</button>` : ""}
   </section>`;
 }
@@ -1939,6 +1944,18 @@ document.addEventListener("change", async (e) => {
   if (t.id === "day-title") { const v = t.value.trim(); if (v) await changeDay(editDayId(), (dd) => { if (dd.title === v) return false; dd.title = v; }, "Séance renommée"); return; }
   if (t.dataset.wkday != null) {
     const wd = +t.dataset.wkday, v = t.value; const days = prog().days; const cur = days.find(x => dayWd(x) === wd);
+    if (v.startsWith("__tpl:") || v === "__empty" || v.startsWith("__copy:")) {
+      let nd;
+      if (v.startsWith("__tpl:")) { const k = v.slice(6); if (!TEMPLATES[k]) return; nd = buildDays([{ wd, key: k }], [])[0]; }
+      else if (v === "__empty") { const id = `d${uid()}`; nd = { id, label: WD_LABELS[wd], title: "Nouvelle séance", ex: [] }; }
+      else { const src = days.find(x => x.id === v.slice(7)); if (!src) return; const id = `d${uid()}`;
+        nd = { ...clone(src), id, label: WD_LABELS[wd], ex: src.ex.map(x => ({ ...clone(x), id: `${id.slice(0, 2)}-${uid()}` })) }; }
+      if (cur) { undoRm = clone(cur); days.splice(days.indexOf(cur), 1); }
+      days.push(nd); sortDays(days); proposal = null; progDayId = nd.id;
+      render(); await persistCfg(`${nd.title} ajoutée le ${WD_LABELS[wd].toLowerCase()}${cur ? ` (à la place de ${cur.title})` : ""}`);
+      if (v === "__empty") $("#compose")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (v === "__new") {
       proposal = { kind: "add", wd, split: planSplit(days.map(dayWd).concat([wd])), comp: complementFor(days, wd) };
       render(); $("#proposal")?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
@@ -1986,7 +2003,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
-const APP_VERSION = "2026-11-25.1";
+const APP_VERSION = "2026-11-25.2";
 let updChecking = false;
 async function checkUpdate() {
   if (!/github\.io$/.test(location.hostname) || updChecking) return;
