@@ -316,6 +316,24 @@ details.more-in > div { display: grid; gap: 10px; }
 .tplpick { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 4px; }
 .tplpick span { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #9a9aa5); }
 .tplpick select { width: 100%; font-size: 16px; }
+/* ===== confort au téléphone ===== */
+html { scroll-padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)); -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior-y: contain; }   /* pas de rechargement par glissé vers le bas en pleine séance */
+button, input, select, textarea, label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }   /* pas de zoom au double appui, appui immédiat */
+button { -webkit-user-select: none; user-select: none; }
+input, select, textarea { font-size: 16px !important; }   /* évite le zoom automatique de l'iPhone quand on touche un champ */
+.chk { min-width: 46px; min-height: 46px; }
+.exbtn { min-height: 40px; }
+.extools { min-height: 36px; padding: 6px 12px; }
+.mini { min-width: 40px; min-height: 40px; }
+.more { width: 42px; height: 42px; }
+.handle { width: 40px; height: 44px; }
+.chip { min-height: 40px; }
+.seg button { min-height: 40px; }
+button:active { transform: scale(.97); }
+body.kb .nav { display: none; }
+@media (max-width: 359px) { header.top h1 { font-size: 26px; } header.top { flex-wrap: nowrap; } }   /* clavier ouvert : la barre du bas laisse la place */
+@media (prefers-reduced-motion: reduce) { button:active { transform: none; } }
 </style>
 
 <div class="wrap">
@@ -886,8 +904,8 @@ function viewSeance() {
       const on = doneSets.has(key) || (!(kid in typed) && (c.kg != null || c.reps != null));
       const pr = on && isPR(bestOf([{ kg: parseNum(kgV), reps: parseNum(rpV) }]), prev);
       return `<span class="n">${i + 1}</span>
-        <input id="${kid}" inputmode="decimal" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} poids en kg" placeholder="${phKg}" value="${esc(kgV)}">
-        <input id="${rid}" inputmode="numeric" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} répétitions" placeholder="${phRp}" value="${esc(rpV)}">
+        <input id="${kid}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} poids en kg" placeholder="${phKg}" value="${esc(kgV)}">
+        <input id="${rid}" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-label="${esc(ex.name)} série ${i + 1} répétitions" placeholder="${phRp}" value="${esc(rpV)}">
         <button class="chk ${on ? "on" : ""} ${pr ? "pr" : ""}" data-done="${ex.id}|${i}" aria-pressed="${on}" aria-label="Série ${i + 1} faite">${pr ? "🏆" : "✓"}</button>`;
     }).join("");
     let panel = "";
@@ -1577,7 +1595,7 @@ async function finishSession(btn) {
   try {
     await store.saveSession(s);
     if (finishing) {
-      stopTimer(); const st = sessionStats(s);
+      stopTimer(); keepAwake(false); const st = sessionStats(s);
       goToNext(); doneSets.clear(); toolsOpen = null;
       if (s.date < today()) { tab = "historique"; histView = "cal"; calMonth = s.date.slice(0, 7); }   // rattrapage : retour au calendrier pour la suivante
       render(); window.scrollTo({ top: 0 });
@@ -1854,6 +1872,8 @@ document.addEventListener("click", async (e) => {
         (k == null || k < 0 || k > 500 ? kg : rp).focus(); toast(k == null || k < 0 || k > 500 ? "Charge entre 0 et 500 kg (machine assistée : note l'assistance)" : "Reps : un nombre entier entre 1 et 100"); return; } }
     typed[tkey(kg.id)] = kg.value; typed[tkey(rp.id)] = rp.value; doneSets.add(key);
     t.classList.add("on"); t.setAttribute("aria-pressed", "true"); ensureAudio();
+    try { navigator.vibrate?.(25); } catch (e) {}
+    if (curDate === today()) keepAwake(true);
     const sc = bestOf([{ kg: parseNum(kg.value), reps: parseNum(rp.value) }]), prev = bestBefore(ex.name, curDate);
     if (isPR(sc, prev)) {
       t.classList.add("pr"); t.textContent = "🏆";
@@ -2054,6 +2074,40 @@ document.addEventListener("input", (e) => {
   if (t.id === "pk-q") { picker.q = t.value; if (t.value.trim() && picker.filterM) { picker.filterM = ""; $$("[data-pm]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pm === "")); } renderPickerList(); }
 });
 
+/* ===== confort au téléphone ===== */
+/* écran allumé pendant la séance (plus besoin de déverrouiller entre deux séries) */
+let wakeLock = null, wantAwake = false;
+async function keepAwake(on) {
+  wantAwake = on;
+  try {
+    if (on && !wakeLock && navigator.wakeLock && !document.hidden) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener?.("release", () => { wakeLock = null; }); }
+    if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+  } catch (e) { wakeLock = null; }
+}
+/* clavier : « Suivant » passe des kilos aux reps, « OK » sur les reps coche la série */
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const t = e.target; if (!t?.id) return;
+  let m = t.id.match(/^kg-(.+)-(\d+)$/);
+  if (m) { e.preventDefault(); $(`#rp-${m[1]}-${m[2]}`)?.focus(); return; }
+  m = t.id.match(/^rp-(.+)-(\d+)$/);
+  if (m) { e.preventDefault(); t.blur(); const b = $(`[data-done="${m[1]}|${m[2]}"]`); if (b && !b.classList.contains("on")) b.click(); }
+});
+/* clavier ouvert : on cache la barre du bas et on garde la série visible au-dessus du clavier et du minuteur */
+let kbT = null;
+document.addEventListener("focusin", (e) => {
+  if (!e.target.matches?.("input:not([type=date]):not([type=file]), textarea")) return;
+  clearTimeout(kbT); document.body.classList.add("kb");
+  setTimeout(() => {
+    const el = e.target; if (document.activeElement !== el) return;
+    const vh = window.visualViewport?.height || innerHeight, r = el.getBoundingClientRect();
+    const tm = $("#timer"), cover = tm && !tm.hidden ? tm.getBoundingClientRect().height + 12 : 12;
+    if (r.bottom > vh - cover) window.scrollBy({ top: r.bottom - vh + cover + 20, behavior: "smooth" });
+    else if (r.top < 70) window.scrollBy({ top: r.top - 90, behavior: "smooth" });
+  }, 320);
+});
+document.addEventListener("focusout", () => { clearTimeout(kbT); kbT = setTimeout(() => { if (!document.activeElement?.matches?.("input, textarea")) document.body.classList.remove("kb"); }, 150); });
+
 /* l'app ouverte dans un autre onglet a enregistré quelque chose : on se met à jour */
 window.addEventListener("storage", (e) => {
   if (store.mode === "db" || !e.key || e.newValue == null) return;
@@ -2070,6 +2124,7 @@ window.addEventListener("storage", (e) => {
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) { hiddenAt = Date.now(); await flushAutosave(); return; }
+  if (wantAwake && [...doneSets].some(k => k.startsWith(today() + "|"))) keepAwake(true); else if (wantAwake) keepAwake(false);
   checkUpdate();
   const dayChanged = curDate !== today() && !manualNav;
   const fillingPast = manualNav && curDate < today();   // tu remplis une ancienne séance : on ne t'en fait pas sortir
@@ -2080,7 +2135,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
-const APP_VERSION = "2026-11-25.3";
+const APP_VERSION = "2026-11-25.4";
 let updChecking = false;
 async function checkUpdate() {
   if (!/github\.io$/.test(location.hostname) || updChecking) return;
