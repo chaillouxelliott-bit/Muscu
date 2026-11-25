@@ -250,6 +250,8 @@ td .s.top { font-weight: 600; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend span::before { content: ""; width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
 .lg-done::before { background: var(--accent); }
+.cday.moved { color: var(--muted, #9a9aa5); border: 1px dashed var(--muted, #9a9aa5); }
+.lg-moved { color: var(--muted, #9a9aa5); } .lg-moved::before { display: none !important; }
 .lg-miss::before { border: 1.5px solid var(--warn); }
 .lg-plan::before { border: 1.5px dashed var(--muted); }
 .slist { display: grid; gap: 6px; }
@@ -305,6 +307,10 @@ details.more-in > div { display: grid; gap: 10px; }
 .wkrow.on > span { color: var(--accent); }
 .wkrow:not(.on) select { color: var(--muted); }
 .savebar.saved .savestate { color: var(--up); }
+/* petits écrans (iPhone SE 1re génération…) : rien ne doit dépasser */
+.savebar .savestate { min-width: 0; overflow-wrap: anywhere; }
+.sheet-in, .sheet-in > * { min-width: 0; max-width: 100%; }
+@media (max-width: 359px) { .savebar .primary { font-size: 15px; padding: 10px 12px; } .sheet-head h2 { font-size: 20px; } .sheet-head { flex-wrap: wrap; } }
 @media (max-width: 380px) { .bar { grid-template-columns: 88px 1fr 48px; } .tile b { font-size: 26px; } }
 @media (prefers-reduced-motion: no-preference) { .tab, .primary, .fill { transition: background .15s, color .15s, width .3s; } }
 .tplpick { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 4px; }
@@ -486,6 +492,8 @@ const isoLocal = (d) => { d = new Date(d); d.setMinutes(d.getMinutes() - d.getTi
 const today = () => isoLocal(new Date());
 const fmtDate = (iso) => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
 const fmtNum = (n, dec = 1) => (n == null || n === "" ? "" : String(Math.round(n * 10 ** dec) / 10 ** dec).replace(".", ","));
+const okKg = (n) => (n != null && n >= 0 && n <= 500 ? n : null);                          // charge plausible
+const okReps = (n) => (n != null && n >= 1 && n <= 100 && Number.isInteger(n) ? n : null);  // reps plausibles
 const parseNum = (v) => { v = String(v ?? "").trim().replace(",", "."); if (!v) return null; const n = Number(v); return isFinite(n) ? n : null; };
 const topRep = (r) => { const m = String(r).match(/(\d+)\s*$/); return m ? Number(m[1]) : null; };
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -505,6 +513,8 @@ let curDate = today();
 let curDayByProg = {};
 let draft = null;          // copie du programme en cours d'édition
 let doneSets = new Set();  // séries cochées dans cette visite
+let untickVals = {};       // chiffres d'une série décochée, remis si on la recoche
+let lastChk = { key: "", at: 0 };  // dernier appui sur ✓ (anti double appui)
 let progEx = null;         // exercice affiché dans Progrès
 let armed = null;          // bouton de confirmation en attente
 let histView = "cal";      // sous-vue de l'Historique : cal | force | corps
@@ -625,15 +635,17 @@ const store = {
   },
   _ls(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} },
   /* la liste locale est mise à jour tout de suite : l'écran reflète l'action sans attendre le serveur */
+  /* relit ce qui est enregistré sur l'appareil : si l'app est ouverte deux fois, on n'écrase pas ce que l'autre a noté */
+  _read(key, fb) { if (this.mode === "db") return fb; try { const v = JSON.parse(localStorage.getItem(key) || "null"); return Array.isArray(v) ? v : fb; } catch (e) { return fb; } },
   async saveSession(s) {
-    sessions = sessions.filter(x => !(x.day === s.day && x.date === s.date)).concat([s]);
+    sessions = this._read("carnet-seances", sessions).filter(x => !(x.day === s.day && x.date === s.date)).concat([s]);
     if (s.swaps && swapKey(s.day, s.date) in tmpSwaps) { delete tmpSwaps[swapKey(s.day, s.date)]; saveTmpSwaps(); }
     if (this.mode === "db") pending.set(`${s.day}_${s.date}`, s);
     if (this.mode === "db") return this.db.collection("seances").doc(`${s.day}_${s.date}`).set(s);
     this._ls("carnet-seances", sessions);
   },
   async deleteSession(day, date) {
-    sessions = sessions.filter(x => !(x.day === day && x.date === date));
+    sessions = this._read("carnet-seances", sessions).filter(x => !(x.day === day && x.date === date));
     if (swapKey(day, date) in tmpSwaps) { delete tmpSwaps[swapKey(day, date)]; saveTmpSwaps(); }
     if (this.mode === "db") pending.set(`${day}_${date}`, null);
     if (this.mode === "db") return this.db.collection("seances").doc(`${day}_${date}`).delete();
@@ -642,13 +654,13 @@ const store = {
   async saveWeight(w) {
     if (this.mode === "db") weights = weights.filter(x => x.date !== w.date).concat([w]).sort((a, b) => a.date.localeCompare(b.date));
     if (this.mode === "db") return this.db.collection("poids").doc(w.date).set(w);
-    weights = weights.filter(x => x.date !== w.date).concat([w]).sort((a, b) => a.date.localeCompare(b.date));
+    weights = this._read("carnet-poids", weights).filter(x => x.date !== w.date).concat([w]).sort((a, b) => a.date.localeCompare(b.date));
     this._ls("carnet-poids", weights);
   },
   async deleteWeight(date) {
     if (this.mode === "db") weights = weights.filter(x => x.date !== date);
     if (this.mode === "db") return this.db.collection("poids").doc(date).delete();
-    weights = weights.filter(x => x.date !== date); this._ls("carnet-poids", weights);
+    weights = this._read("carnet-poids", weights).filter(x => x.date !== date); this._ls("carnet-poids", weights);
   },
   async saveProfil(p) {
     profil = p;
@@ -727,7 +739,7 @@ function render() {
 function dayTabs() {
   const p = prog();
   const next = nextToDo(), cur = curDayId(), since = addDays(today(), -6);
-  return `<nav class="tabs" style="--n:${p.days.length}" role="tablist">${byNext(p.days).map(d => { const nx = d.id === next; const dn = sessions.some(s => s.day === d.id && isDone(s) && s.date >= since);
+  return `<nav class="tabs" style="--n:${p.days.length}" role="tablist">${byNext(p.days).map(d => { const nx = d.id === next && curDate === today(); const dn = sessions.some(s => s.day === d.id && isDone(s) && s.date >= since);
     return `<button class="tab ${nx ? "next" : ""}" role="tab" aria-selected="${d.id === cur}" data-day="${d.id}"><b>${esc(p.days.length > 4 ? d.label.slice(0, 3) : d.label)}${dn ? " ✓" : ""}</b><span>${nx ? "▶ À faire" : esc(d.title)}</span></button>`; }).join("")}</nav>`;
 }
 const setLine = (sets) => filled(sets).map(x => `${fmtNum(x.kg) || "–"}×${x.reps ?? "–"}`).join(" · ");
@@ -959,7 +971,7 @@ function collect() {
   d.ex.forEach(o => Object.keys(sets).forEach(k => { if ((k === o.id || k.startsWith(o.id + "--t-")) && !list.some(x => x.id === k)) { delete sets[k]; delete names[k]; delete muscles[k]; } }));
   list.forEach(ex => {
     names[ex.id] = ex.name; muscles[ex.id] = ex.muscle;
-    sets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({ kg: parseNum($(`#kg-${ex.id}-${i}`)?.value), reps: parseNum($(`#rp-${ex.id}-${i}`)?.value) }));
+    sets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({ kg: okKg(parseNum($(`#kg-${ex.id}-${i}`)?.value)), reps: okReps(parseNum($(`#rp-${ex.id}-${i}`)?.value)) }));
   });
   const dv = $("#duree") ? parseNum($("#duree").value) : parseNum(typed[tkey("duree")] ?? prev?.duree);
   return { prog: cfg.active, day: d.id, label: d.label, title: d.title, date: curDate, sets, names, muscles, duree: dv || null, note: $("#note")?.value ?? typed[tkey("note")] ?? prev?.note ?? "", done: prev?.done || false, swaps: clone(swapsFor(d.id, curDate)), updatedAt: new Date().toISOString() };
@@ -985,9 +997,9 @@ async function changeDay(dayId, fn, msg) {
 const validSets = (s, ms) => Object.entries(s.sets || {}).reduce((u, [id, a]) => (!ms || ms.includes(exMuscle(s, id))) ? u + filled(a).filter(x => x.reps != null).length : u, 0);
 function viewHistorique() {
   const thisMon = mondayOf(today());
-  const weekS = sessions.filter(s => validated(s) && s.date >= thisMon && s.date <= addDays(thisMon, 6));
+  const weekS = sessions.filter(s => counted(s) && s.date >= thisMon && s.date <= addDays(thisMon, 6));
   let streak = 0;
-  for (let w = 0; w < 104; w++) { const m = addDays(thisMon, -7 * w); const has = sessions.some(s => validated(s) && s.date >= m && s.date <= addDays(m, 6)); if (has) streak++; else if (w > 0) break; }
+  for (let w = 0; w < 104; w++) { const m = addDays(thisMon, -7 * w); const has = sessions.some(s => counted(s) && s.date >= m && s.date <= addDays(m, 6)); if (has) streak++; else if (w > 0) break; }
   const ms = monthStats(today().slice(0, 7));
   const views = [["cal", "Calendrier"], ["force", "Force"], ["corps", "Corps"]];
   return `<div class="tiles">
@@ -1466,6 +1478,8 @@ function proposalHtml() {
 let calMonth = today().slice(0, 7);
 let openSummary = null;
 const validated = (s) => Object.values(s.sets || {}).some(a => filled(a).length);
+/* compte dans le calendrier et les stats : terminée, ou remplie et d'un jour passé (séance d'aujourd'hui en cours = pas encore faite) */
+const counted = (s) => validated(s) && (s.done || s.date < today());
 function monthStats(monthKey) {
   const [y, mo] = monthKey.split("-").map(Number);
   const first = new Date(y, mo - 1, 1), nDays = new Date(y, mo, 0).getDate();
@@ -1474,9 +1488,18 @@ function monthStats(monthKey) {
   const ph = cfg.planHistory || [];
   const plannedOn = (iso) => { if (iso >= today()) return curWds; const e = [...ph].reverse().find(x => x.from <= iso); return e ? new Set(e.wds) : curWds; };
   const valid = sessions.filter(validated);
-  const byDate = {}; valid.forEach(s => (byDate[s.date] ||= []).push(s));
+  const byDate = {}; valid.filter(counted).forEach(s => (byDate[s.date] ||= []).push(s));
   const startDate = valid.map(s => s.date).sort()[0] || today();
   const td = today();
+  /* séance faite un autre jour de la même semaine (lundi → dimanche) : le jour prévu n'est pas compté comme manqué */
+  const shifted = new Set();
+  const lastDay = `${monthKey}-${String(nDays).padStart(2, "0")}`;
+  for (let mon = mondayOf(`${monthKey}-01`); mon <= lastDay; mon = addDays(mon, 7)) {
+    const wk = Array.from({ length: 7 }, (_, k) => addDays(mon, k));
+    const isPl = (iso) => plannedOn(iso).has(new Date(iso + "T12:00:00").getDay());
+    let extra = wk.filter(iso => byDate[iso] && !isPl(iso)).length;
+    wk.forEach(iso => { if (extra > 0 && isPl(iso) && !byDate[iso] && iso < td && iso >= startDate) { shifted.add(iso); extra--; } });
+  }
   let nDone = 0, nMiss = 0, nPlan = 0;
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push(`<span class="cday out"></span>`);
@@ -1486,6 +1509,7 @@ function monthStats(monthKey) {
     const planned = plannedOn(iso).has(wd);
     let cls = "", mark = "", label = `${d}`;
     if (byDate[iso]) { cls = "done"; mark = "✓"; nDone++; label += " : séance faite"; }
+    else if (shifted.has(iso)) { cls = "moved"; mark = "↔"; label += " : séance faite un autre jour de la semaine"; }
     else if (planned && iso < td && iso >= startDate) { cls = "miss"; mark = "✕"; nMiss++; label += " : séance manquée"; }
     else if (planned && iso >= td) { cls = "plan"; mark = "•"; nPlan++; label += " : séance prévue"; }
     if (iso === td) cls += " today";
@@ -1501,7 +1525,7 @@ function calHtml() {
   return `<section class="card">
     <div class="top"><button class="mini" data-calnav="-1" aria-label="Mois précédent">‹</button><h3 style="text-transform:capitalize">${esc(monthName)}</h3><button class="mini" data-calnav="1" aria-label="Mois suivant">›</button></div>
     <div class="cal">${["L", "M", "M", "J", "V", "S", "D"].map(x => `<span class="wd">${x}</span>`).join("")}${st.cells.join("")}</div>
-    <div class="legend"><span class="lg-done">Faite</span><span class="lg-miss">Manquée</span><span class="lg-plan">Prévue</span></div>
+    <div class="legend"><span class="lg-done">Faite</span><span class="lg-miss">Manquée</span><span class="lg-plan">Prévue</span><span class="lg-moved">↔ Décalée</span></div>
     <p class="hint">Touche un jour pour ouvrir sa séance.</p>
   </section>
   <section class="card">
@@ -1554,7 +1578,9 @@ async function finishSession(btn) {
     await store.saveSession(s);
     if (finishing) {
       stopTimer(); const st = sessionStats(s);
-      goToNext(); doneSets.clear(); toolsOpen = null; render(); window.scrollTo({ top: 0 });
+      goToNext(); doneSets.clear(); toolsOpen = null;
+      if (s.date < today()) { tab = "historique"; histView = "cal"; calMonth = s.date.slice(0, 7); }   // rattrapage : retour au calendrier pour la suivante
+      render(); window.scrollTo({ top: 0 });
       openBilan(s, st, dayObj());
     } else { render(); toast("Séance mise à jour"); }
   } catch (err) { if (btn) btn.disabled = false; toast(err?.code === "quota_exceeded" ? "Stockage plein : supprime d'anciennes séances" : "Échec de l'enregistrement, réessaie"); }
@@ -1809,13 +1835,23 @@ document.addEventListener("click", async (e) => {
     const dd = dayObj(); const list = effEx(dd, curDate); const [exId, i] = ds.done.split("|"); const ex = list.find(x => x.id === exId); if (!ex) return;
     const key = `${curDate}|${dd.id}|${exId}|${i}`;
     const kg = $(`#kg-${exId}-${i}`), rp = $(`#rp-${exId}-${i}`);
-    if (t.classList.contains("on")) {   // annule la série
+    /* un double appui (2 touches en moins de 0,6 s) ne doit pas annuler la série qu'on vient de cocher */
+    if (lastChk.key === key && Date.now() - lastChk.at < 600) return;
+    lastChk = { key, at: Date.now() };
+    if (t.classList.contains("on")) {   // annule la série (les chiffres sont gardés de côté pour la recocher)
+      if (kg.value || rp.value) untickVals[key] = { kg: kg.value, rp: rp.value };
       doneSets.delete(key); kg.value = ""; rp.value = ""; typed[tkey(kg.id)] = ""; typed[tkey(rp.id)] = "";
+      if (untickVals[key]) { kg.placeholder = untickVals[key].kg || kg.placeholder; rp.placeholder = untickVals[key].rp || rp.placeholder; }
       t.classList.remove("on", "pr"); t.textContent = "✓"; t.setAttribute("aria-pressed", "false"); scheduleAutosave(); updateKcal(); return;
     }
+    const back = untickVals[key]; delete untickVals[key];
+    if (back && !kg.value && !rp.value) { kg.value = back.kg; rp.value = back.rp; }
     if (!kg.value && kg.placeholder && kg.placeholder !== "kg") kg.value = kg.placeholder;
     if (!rp.value && rp.placeholder && rp.placeholder !== "reps") rp.value = rp.placeholder;
     if (!kg.value && !rp.value) { rp.focus(); toast("Note tes reps (et ta charge) puis touche ✓"); return; }
+    { const k = parseNum(kg.value), r = parseNum(rp.value);
+      if ((kg.value && (k == null || k < 0 || k > 500)) || (rp.value && (r == null || r < 1 || r > 100 || !Number.isInteger(r)))) {
+        (k == null || k < 0 || k > 500 ? kg : rp).focus(); toast(k == null || k < 0 || k > 500 ? "Charge entre 0 et 500 kg (machine assistée : note l'assistance)" : "Reps : un nombre entier entre 1 et 100"); return; } }
     typed[tkey(kg.id)] = kg.value; typed[tkey(rp.id)] = rp.value; doneSets.add(key);
     t.classList.add("on"); t.setAttribute("aria-pressed", "true"); ensureAudio();
     const sc = bestOf([{ kg: parseNum(kg.value), reps: parseNum(rp.value) }]), prev = bestBefore(ex.name, curDate);
@@ -1828,7 +1864,7 @@ document.addEventListener("click", async (e) => {
     const all = list.every(x => Array.from({ length: x.sets }, (_, j) => $(`[data-done="${x.id}|${j}"]`)?.classList.contains("on")).every(Boolean));
     const already = sessions.find(s => s.day === dd.id && s.date === curDate)?.done;
     if (all && !already) { await finishSession(null); return; }
-    startTimer(optimalRest(ex), ex.name);
+    if (curDate === today()) startTimer(optimalRest(ex), ex.name);   // pas de minuteur quand tu rattrapes une ancienne séance
     return;
   }
   if (ds.tools) { toolsOpen = toolsOpen === ds.tools ? null : ds.tools; render(); return; }
@@ -1979,7 +2015,35 @@ document.addEventListener("change", async (e) => {
   }
   if (t.id === "prop-comp" && proposal) { proposal.comp = t.value; return; }
   if (t.dataset.propkey != null && proposal) { proposal.split[+t.dataset.propkey].key = t.value; render(); $("#proposal")?.scrollIntoView({ block: "center" }); return; }
-  if (t.id === "date" && t.value) { await flushAutosave(); manualNav = true; curDate = t.value; render(); return; }
+  if (t.id === "date" && t.value) {
+    const from = curDate, to = t.value, d = dayObj();
+    if (!d || to === from) return;
+    /* ce qui vient d'être tapé suit la nouvelle date (sinon les séries restaient enregistrées sur l'ancienne) */
+    clearTimeout(autoT); autoT = null; if (autoBusy) await autoBusy.catch(() => {});
+    const typedHere = hasTyped();
+    const screen = $("#view .sets") ? collect() : null;
+    const hasData = !!screen && Object.values(screen.sets).some(a => filled(a).length);
+    const old = sessions.find(s => s.day === d.id && s.date === from);
+    const target = sessions.find(s => s.day === d.id && s.date === to && validated(s));
+    manualNav = true;
+    if (typedHere && hasData && !old?.done && !target) {
+      const pre = `${from}|${d.id}|`, npre = `${to}|${d.id}|`;
+      Object.keys(typed).forEach(k => { if (k.startsWith(pre)) { typed[npre + k.slice(pre.length)] = typed[k]; delete typed[k]; } });
+      [...doneSets].forEach(k => { if (k.startsWith(pre)) { doneSets.delete(k); doneSets.add(npre + k.slice(pre.length)); } });
+      const sk = swapKey(d.id, from); if (sk in tmpSwaps) { tmpSwaps[swapKey(d.id, to)] = tmpSwaps[sk]; delete tmpSwaps[sk]; saveTmpSwaps(); }
+      curDate = to;
+      const moved = collect();
+      try {
+        if (old) await store.deleteSession(d.id, from);
+        await store.saveSession(moved);
+        toast(`Séance placée au ${fmtDate(to)}`);
+      } catch (err) { toast("Échec de l'enregistrement, réessaie"); }
+      render(); return;
+    }
+    if (typedHere && hasData) { await flushAutosave(); toast(target ? `Il y a déjà une séance le ${fmtDate(to)} : ta saisie reste au ${fmtDate(from)}` : `Séance terminée : elle reste au ${fmtDate(from)}`); }
+    else await flushAutosave();
+    curDate = to; render(); return;
+  }
   if (t.id === "progsel") { progEx = t.value; render(); return; }
   if (t.id === "pl-bar") { calcTools(); return; }
 });
@@ -1990,20 +2054,33 @@ document.addEventListener("input", (e) => {
   if (t.id === "pk-q") { picker.q = t.value; if (t.value.trim() && picker.filterM) { picker.filterM = ""; $$("[data-pm]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pm === "")); } renderPickerList(); }
 });
 
+/* l'app ouverte dans un autre onglet a enregistré quelque chose : on se met à jour */
+window.addEventListener("storage", (e) => {
+  if (store.mode === "db" || !e.key || e.newValue == null) return;
+  try {
+    const v = JSON.parse(e.newValue);
+    if (e.key === "carnet-seances" && Array.isArray(v)) { sessions = v; refresh("sessions"); }
+    else if (e.key === "carnet-poids" && Array.isArray(v)) { weights = v; refresh("weights"); }
+    else if (e.key === "carnet-profil" && v) { profil = v; refresh("weights"); }
+    else if (e.key === "carnet-prog" && v && cfgFromStore(v)) refresh("cfg");
+  } catch (err) {}
+});
+
 /* en revenant dans l'app après 20 min ou un changement de jour, on réaffiche la séance à faire */
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) { hiddenAt = Date.now(); await flushAutosave(); return; }
   checkUpdate();
   const dayChanged = curDate !== today() && !manualNav;
-  if (dayChanged || (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000)) {
+  const fillingPast = manualNav && curDate < today();   // tu remplis une ancienne séance : on ne t'en fait pas sortir
+  if (dayChanged || (!fillingPast && hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000)) {
     if (picker || drag || tab === "programme") return;
     goToNext(); if (tab === "seance") render();
   }
 });
 
 /* ================= mise à jour automatique (version GitHub / écran d'accueil) ================= */
-const APP_VERSION = "2026-11-25.2";
+const APP_VERSION = "2026-11-25.3";
 let updChecking = false;
 async function checkUpdate() {
   if (!/github\.io$/.test(location.hostname) || updChecking) return;
@@ -2013,7 +2090,7 @@ async function checkUpdate() {
     const m = (await r.text()).match(/const APP_VERSION = "([^"]+)"/);
     if (!m || m[1] === APP_VERSION) return;
     const go = async () => { await flushAutosave(); location.replace(location.pathname + "?v=" + encodeURIComponent(m[1])); };
-    if (!hasTyped() && !picker && !drag && !settingsOpen) { go(); return; }   // rien en cours : on recharge tout de suite
+    if (!hasTyped() && !picker && !drag && !settingsOpen && $("#bilan").hidden && $("#timer").hidden) { go(); return; }   // rien en cours : on recharge tout de suite
     let b = $("#upd");
     if (!b) { b = document.createElement("button"); b.id = "upd"; b.className = "toast"; b.style.border = "0"; b.textContent = "Nouvelle version · touche pour mettre à jour"; document.body.appendChild(b); b.onclick = go; }
   } catch (e) {} finally { updChecking = false; }
