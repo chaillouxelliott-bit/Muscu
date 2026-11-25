@@ -307,6 +307,9 @@ details.more-in > div { display: grid; gap: 10px; }
 .savebar.saved .savestate { color: var(--up); }
 @media (max-width: 380px) { .bar { grid-template-columns: 88px 1fr 48px; } .tile b { font-size: 26px; } }
 @media (prefers-reduced-motion: no-preference) { .tab, .primary, .fill { transition: background .15s, color .15s, width .3s; } }
+.tplpick { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 4px; }
+.tplpick span { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #9a9aa5); }
+.tplpick select { width: 100%; font-size: 16px; }
 </style>
 
 <div class="wrap">
@@ -760,6 +763,9 @@ function composeHtml(d) {
   const others = prog().days.filter(x => x.id !== d.id);
   return `<section class="compose" id="compose">
     <input class="titlein" id="day-title" value="${esc(d.title)}" aria-label="Nom de la séance">
+    <label class="tplpick"><span>🔀 Changer de combinaison</span><select id="day-tpl" aria-label="Remplacer par un autre type de séance">
+      <option value="" selected>Choisir une combinaison…</option>${tplOptions("")}</select></label>
+    ${undoTpl && undoTpl.id === d.id ? `<button class="mini" id="undo-tpl" style="align-self:flex-start">↺ Revenir à « ${esc(undoTpl.title)} »</button>` : ""}
     <p class="hint">Touche un exercice pour le changer · glisse ⠿ pour l'ordre, ou sur un jour en haut pour l'y déplacer.</p>
     ${d.ex.map((ex, i) => `<div class="crow" data-idx="${i}" data-ex="${ex.id}">
       <button class="handle" aria-label="Glisser ${esc(ex.name)}">⠿</button>
@@ -1324,8 +1330,41 @@ const TEMPLATES = {
   FULL: { title: "Haut du corps · pecs & dos", main: ["pecs", "dos", "epaules"], ex: [["Développé incliné", 3, "8-12"], ["Tirage vertical prise large", 3, "8-12"], ["Pec fly machine", 3, "10-15"], ["Rowing haltère un bras", 3, "8-12"], ["Élévations latérales", 3, "12-20"], ["Curl incliné", 2, "10-12"]] },
   UP_A: { title: "Haut du corps · accent pecs", main: ["pecs", "dos", "epaules"], ex: [["Développé incliné", 3, "6-10"], ["Tractions", 3, "6-10"], ["Développé couché haltères", 3, "8-12"], ["Rowing poitrine appuyée", 3, "8-12"], ["Élévations latérales", 3, "12-20"], ["Extension triceps poulie", 2, "10-12"]] },
   UP_B: { title: "Haut du corps · accent dos", main: ["dos", "pecs", "arriere"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Développé incliné haltères", 3, "8-12"], ["Rowing barre", 3, "6-10"], ["Pec fly machine", 3, "10-15"], ["Face pull", 3, "12-20"], ["Curl incliné", 3, "10-12"]] },
-  SH_ARMS: { title: "Épaules / Bras", main: ["epaules", "arriere", "biceps", "triceps"], ex: [["Développé militaire haltères", 3, "8-10"], ["Élévations latérales poulie", 4, "12-20"], ["Reverse fly machine", 3, "12-20"], ["Curl EZ", 3, "8-12"], ["Extension triceps au-dessus de la tête", 3, "10-12"], ["Curl marteau", 2, "10-12"]] }
+  SH_ARMS: { title: "Épaules / Bras", main: ["epaules", "arriere", "biceps", "triceps"], ex: [["Développé militaire haltères", 3, "8-10"], ["Élévations latérales poulie", 4, "12-20"], ["Reverse fly machine", 3, "12-20"], ["Curl EZ", 3, "8-12"], ["Extension triceps au-dessus de la tête", 3, "10-12"], ["Curl marteau", 2, "10-12"]] },
+  /* autres combinaisons */
+  PUSH_T: { g: "Poussée", title: "Pecs / Épaules / Triceps", main: ["pecs", "epaules", "triceps"], ex: [["Développé incliné", 3, "6-10"], ["Chest press machine", 3, "8-12"], ["Pec fly machine", 3, "10-15"], ["Élévations latérales", 4, "12-20"], ["Extension triceps corde", 3, "10-15"], ["Extension triceps au-dessus de la tête", 2, "10-12"]] },
+  PEC_TRI: { g: "Poussée", title: "Pecs / Triceps", main: ["pecs", "triceps"], ex: [["Développé incliné haltères", 3, "8-12"], ["Développé couché", 3, "6-10"], ["Écarté poulie vis-à-vis", 3, "12-15"], ["Développé couché prise serrée", 3, "6-10"], ["Barre au front", 3, "8-12"], ["Extension triceps corde", 2, "12-15"]] },
+  SH_TRI: { g: "Poussée", title: "Épaules / Triceps", main: ["epaules", "arriere", "triceps"], ex: [["Shoulder press machine", 3, "8-10"], ["Élévations latérales", 4, "12-20"], ["Élévations latérales poulie", 3, "12-20"], ["Reverse fly machine", 3, "12-20"], ["Extension triceps poulie", 3, "10-15"], ["Triceps machine", 2, "10-12"]] },
+  PULL_B: { g: "Tirage", title: "Dos / Biceps", main: ["dos", "arriere", "biceps"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Rowing barre", 3, "6-10"], ["Tirage horizontal poulie", 3, "10-12"], ["Pull-over poulie", 2, "12-15"], ["Curl EZ", 3, "8-12"], ["Curl marteau", 2, "10-12"]] },
+  BACK_RD: { g: "Tirage", title: "Dos / Arrière d'épaules", main: ["dos", "arriere"], ex: [["Tractions assistées machine", 3, "6-10"], ["Rowing haltère un bras", 3, "8-12"], ["Tirage vertical prise neutre", 3, "10-12"], ["Face pull", 3, "12-20"], ["Reverse fly machine", 3, "12-20"], ["Shrug haltères", 2, "10-15"]] },
+  PEC_BI: { g: "Croisées", title: "Pecs / Biceps", main: ["pecs", "biceps"], ex: [["Développé incliné à la Smith", 3, "6-10"], ["Chest press machine", 3, "8-12"], ["Pec fly machine", 3, "10-15"], ["Curl incliné", 3, "10-12"], ["Curl pupitre machine", 3, "10-12"], ["Curl marteau", 2, "10-12"]] },
+  BACK_TRI: { g: "Croisées", title: "Dos / Triceps", main: ["dos", "triceps"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Rowing poitrine appuyée", 3, "8-12"], ["Tirage horizontal coudes ouverts", 3, "10-15"], ["Développé couché prise serrée", 3, "6-10"], ["Extension triceps corde", 3, "10-15"], ["Extension haltère au-dessus de la tête", 2, "10-12"]] },
+  PEC_BACK: { g: "Croisées", title: "Pecs / Dos (antagonistes)", main: ["pecs", "dos"], ex: [["Développé incliné", 3, "6-10"], ["Tirage vertical prise large", 3, "8-12"], ["Développé couché haltères", 3, "8-12"], ["Rowing poitrine appuyée", 3, "8-12"], ["Écarté poulie basse vers le haut", 2, "12-15"], ["Pull-over poulie", 2, "12-15"]] },
+  ARMS: { g: "Bras / Épaules", title: "Bras · Biceps / Triceps", main: ["biceps", "triceps"], ex: [["Curl EZ", 3, "8-12"], ["Barre au front", 3, "8-12"], ["Curl incliné", 3, "10-12"], ["Extension triceps au-dessus de la tête", 3, "10-12"], ["Curl marteau", 2, "10-12"], ["Extension triceps corde", 2, "12-15"]] },
+  SH_ABS: { g: "Bras / Épaules", title: "Épaules / Abdos", main: ["epaules", "arriere", "abdos"], ex: [["Développé militaire haltères", 3, "8-10"], ["Élévations latérales", 4, "12-20"], ["Oiseau", 3, "12-20"], ["Crunch poulie", 3, "10-15"], ["Relevés de jambes suspendu", 3, "10-15"], ["Gainage planche", 2, "30-60 s"]] },
+  BACK_ABS: { g: "Tirage", title: "Dos / Biceps / Abdos", main: ["dos", "biceps", "abdos"], ex: [["Tirage vertical prise large", 3, "8-12"], ["Rowing machine assis", 3, "8-12"], ["Curl biceps", 3, "8-12"], ["Curl marteau", 2, "10-12"], ["Crunch machine", 3, "10-15"], ["Roue abdominale", 2, "8-12"]] },
+  UP_MACH: { g: "Haut du corps", title: "Haut du corps · 100 % machines", main: ["pecs", "dos", "epaules"], ex: [["Chest press incliné machine", 3, "8-12"], ["Rowing machine assis", 3, "8-12"], ["Shoulder press machine", 3, "8-12"], ["Tirage vertical prise large", 3, "8-12"], ["Élévations latérales machine", 3, "12-20"], ["Curl pupitre machine", 2, "10-12"], ["Triceps machine", 2, "10-12"]] }
 };
+/* groupes affichés dans les menus de choix de séance */
+const TPL_GROUP = { PUSH_H: "Poussée", PUSH_V: "Poussée", PULL_W: "Tirage", PULL_T: "Tirage", FULL: "Haut du corps", UP_A: "Haut du corps", UP_B: "Haut du corps", SH_ARMS: "Bras / Épaules" };
+const TPL_GROUPS = ["Poussée", "Tirage", "Croisées", "Haut du corps", "Bras / Épaules"];
+const TPL_GROUP_LABEL = { "Poussée": "Poussée · pecs, épaules, triceps", "Tirage": "Tirage · dos, biceps", "Croisées": "Combinaisons croisées", "Haut du corps": "Haut du corps complet", "Bras / Épaules": "Bras, épaules, abdos" };
+const tplGroup = (k) => TEMPLATES[k].g || TPL_GROUP[k] || "Haut du corps";
+function tplOptions(selected, recommended) {
+  return TPL_GROUPS.map(g => {
+    const ks = Object.keys(TEMPLATES).filter(k => tplGroup(k) === g); if (!ks.length) return "";
+    return `<optgroup label="${esc(TPL_GROUP_LABEL[g] || g)}">${ks.map(k => `<option value="${k}" ${k === selected ? "selected" : ""}>${esc(TEMPLATES[k].title)}${k === recommended ? " (conseillé)" : ""}</option>`).join("")}</optgroup>`;
+  }).join("");
+}
+/* remplace les exercices d'un jour par un type de séance ; garde les ids (et donc l'historique) des exercices identiques */
+function tplExercises(key, old) {
+  return TEMPLATES[key].ex.map(([n, sets, reps]) => {
+    const lib = libFind(n) || { m: "autre", c: false };
+    const prevEx = old?.ex.find(x => norm(x.name) === norm(n));
+    return { id: prevEx?.id || `${String(old?.id || "d").slice(0, 2)}-${uid()}`, name: n, sets, reps, muscle: lib.m, rest: lib.c ? 150 : 90 };
+  });
+}
+let undoTpl = null;   // { id, title, ex } : pour annuler un changement de type de séance
 const SPLITS = { 1: ["UP_A"], 2: ["UP_A", "UP_B"], 3: ["PUSH_H", "PULL_W", "FULL"], 4: ["PUSH_H", "PULL_W", "PUSH_V", "PULL_T"], 5: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T"], 6: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T", "FULL"], 7: ["PUSH_H", "PULL_W", "SH_ARMS", "PUSH_V", "PULL_T", "FULL", "UP_B"] };
 const SPLIT_WHY = {
   1: "Une seule séance : tout le haut du corps, en commençant par le haut des pecs et le dos.",
@@ -1388,11 +1427,7 @@ function buildDays(split, oldDays) {
   return split.map(({ wd, key }) => {
     const old = oldDays.find(d => dayWd(d) === wd);
     const id = old?.id || `d${uid()}`;
-    return { id, label: WD_LABELS[wd], title: TEMPLATES[key].title, ex: TEMPLATES[key].ex.map(([n, sets, reps]) => {
-      const lib = libFind(n) || { m: "autre", c: false };
-      const prevEx = old?.ex.find(x => norm(x.name) === norm(n));
-      return { id: prevEx?.id || `${id.slice(0, 2)}-${uid()}`, name: n, sets, reps, muscle: lib.m, rest: lib.c ? 150 : 90 };
-    }) };
+    return { id, label: WD_LABELS[wd], title: TEMPLATES[key].title, ex: tplExercises(key, old ? old : { id, ex: [] }) };
   });
 }
 function proposalHtml() {
@@ -1401,7 +1436,7 @@ function proposalHtml() {
     const clash = p.split.some((o, j) => j !== i && consecutive(o.wd, wd) && overlap(key, o.key) >= 3) || recencyPenalty(key, wd) >= 3;
     const when = roll(wd) === 0 ? " (aujourd'hui)" : roll(wd) === 1 ? " (demain)" : "";
     return `<li><div class="pl-top"><b>${WD_LABELS[wd]}${when}</b>
-      <select data-propkey="${i}" aria-label="Type de séance du ${WD_LABELS[wd]}">${Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}" ${k === key ? "selected" : ""}>${esc(t.title)}</option>`).join("")}</select></div>
+      <select data-propkey="${i}" aria-label="Type de séance du ${WD_LABELS[wd]}">${tplOptions(key)}</select></div>
       <small>${TEMPLATES[key].ex.map(e => esc(e[0])).join(" · ")}</small>
       ${clash ? `<small class="warn">⚠ Mêmes muscles que la veille ou le lendemain : récupération plus difficile.</small>` : ""}</li>`;
   }).join("");
@@ -1414,7 +1449,7 @@ function proposalHtml() {
     <div class="pactions">
       <button class="primary" id="prop-apply">Appliquer cette répartition</button>
       ${p.kind === "add" ? `<div class="keepbox"><span class="hint">Ou garde tes séances et ajoute seulement le ${WD_LABELS[p.wd].toLowerCase()} :</span>
-        <select id="prop-comp" aria-label="Séance à ajouter">${Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}" ${k === p.comp ? "selected" : ""}>${esc(t.title)}${k === p.comp ? " (conseillé)" : ""}</option>`).join("")}</select>
+        <select id="prop-comp" aria-label="Séance à ajouter">${tplOptions(p.comp, p.comp)}</select>
         <button class="ghost" id="prop-keep">Ajouter seulement cette séance</button></div>` : ""}
       <button class="ghost" id="prop-cancel">${p.kind === "add" ? "Annuler" : "Garder mes séances telles quelles"}</button>
     </div>
@@ -1690,6 +1725,11 @@ document.addEventListener("click", async (e) => {
     if (st) { st.textContent = `✓ Sauvegardé à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; bar.classList.add("saved"); }
     toast("Programme sauvegardé ✓"); return;
   }
+  if (t.id === "undo-tpl" && undoTpl) {
+    const u = undoTpl; undoTpl = null; const day = prog().days.find(x => x.id === u.id); if (!day) { render(); return; }
+    day.title = u.title; day.ex = u.ex;
+    render(); await persistCfg(`${day.label} : retour à ${day.title}`); return;
+  }
   if (t.id === "undo-rm" && undoRm) {
     const d = undoRm; const days = prog().days;
     if (days.some(x => dayWd(x) === dayWd(d))) { toast(`Le ${d.label.toLowerCase()} est déjà pris : libère-le d'abord`); return; }
@@ -1913,6 +1953,12 @@ document.addEventListener("change", async (e) => {
     if (cur) cur.label = day.label;
     day.label = WD_LABELS[wd]; sortDays(days); proposal = null; progDayId = day.id;
     render(); await persistCfg(cur ? `${day.title} ⇄ ${cur.title}` : `${day.title} → ${WD_LABELS[wd].toLowerCase()}`); return;
+  }
+  if (t.id === "day-tpl" && t.value && TEMPLATES[t.value]) {
+    const key = t.value; const day = prog().days.find(x => x.id === editDayId()); if (!day) return;
+    undoTpl = { id: day.id, title: day.title, ex: clone(day.ex) };
+    day.title = TEMPLATES[key].title; day.ex = tplExercises(key, day);
+    render(); await persistCfg(`${day.label} : ${day.title} (tu peux revenir en arrière)`); return;
   }
   if (t.id === "prop-comp" && proposal) { proposal.comp = t.value; return; }
   if (t.dataset.propkey != null && proposal) { proposal.split[+t.dataset.propkey].key = t.value; render(); $("#proposal")?.scrollIntoView({ block: "center" }); return; }
